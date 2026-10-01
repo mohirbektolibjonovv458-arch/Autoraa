@@ -1,5 +1,8 @@
 from django.conf import settings
+import logging
+
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -28,7 +31,10 @@ class PushSubscribeView(APIView):
         keys = d.get("keys") if isinstance(d.get("keys"), dict) else {}
         p256dh, auth = str(keys.get("p256dh") or "")[:200], str(keys.get("auth") or "")[:100]
         if not endpoint_allowed(endpoint) or not p256dh or not auth:
-            return Response({"detail": "Obuna ma'lumotlari noto'g'ri."}, status=400)
+            from urllib.parse import urlparse
+            host = (urlparse(endpoint).hostname or "?")[:60] if endpoint else "-"
+            logging.getLogger("avtora").warning("Push obunasi rad etildi: push xizmati %s (qo'llab-quvvatlanmaydi yoki ma'lumot noto'g'ri)", host)
+            return Response({"detail": "Bu brauzerning push xizmati qo'llab-quvvatlanmaydi. Chrome, Edge, Firefox yoki Safari'da oching."}, status=400)
         # qurilma boshqa hisobga o'tgan bo'lsa (logout → boshqa login) — obuna yangi egaga o'tadi, eskisiga xabar bormaydi
         sub, created = PushSubscription.objects.update_or_create(
             endpoint=endpoint,
@@ -67,8 +73,10 @@ class PushStatusView(APIView):
         last_ok = max((x.last_success for x in subs if x.last_success), default=None)
         recent = [{"title": n.title, "kind": n.kind, "push": n.push_state, "at": n.created_at}
                   for n in u.notifications.exclude(push_state="off").order_by("-id")[:6]]
+        errs = sorted((x for x in subs if x.last_error), key=lambda x: x.last_error_at or x.created_at, reverse=True)
         return Response({"enabled": enabled(), "devices": len(active), "broken_devices": len(subs) - len(active),
                          "failures": sum(x.failures for x in active), "last_success": last_ok,
+                         "last_error": errs[0].last_error if errs else "", "last_error_at": errs[0].last_error_at if errs else None,
                          "telegram": bool(u.telegram_chat_id), "recent": recent})
 
 
@@ -79,6 +87,8 @@ class PushResubscribeView(APIView):
     ilova ochilmasa ham usta yangi bron haqidagi xabarni olishda davom etadi."""
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "push_resub"
 
     def post(self, request):
         if not enabled():

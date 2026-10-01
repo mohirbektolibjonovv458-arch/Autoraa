@@ -148,11 +148,12 @@ class MessagesView(APIView):
         other.notifications.filter(kind="chat", is_read=False, link=link).delete()
         unread = Message.objects.filter(conversation=c, sender=request.user, is_read=False).count()
         preview = text[:100] or "📎 Rasm yoki joylashuv"
-        who = {"usta": "Usta", "evakuator": "Evakuator", "admin": "Avtora"}.get(request.user.role, "Mijoz")
-        # qulf ekranida faqat umumiy matn: kim yozgani (rol) va nechta xabar — ism va xabar matni ko'rinmaydi
-        lock = f"{who} sizga yangi xabar yubordi" if unread <= 1 else f"{who} sizga {unread} ta yangi xabar yubordi"
-        notify(other, "💬 Yangi xabar", f"{request.user.full_name}: {preview}" + (f"\n({unread} ta yangi xabar)" if unread > 1 else ""),
-               "chat", link, telegram=True, urgent=True, tag=f"chat-{c.id}", push_body=lock)
+        # qulf ekranida faqat umumiy matn — ism va xabar matni ko'rinmaydi (ilova ichidagi ro'yxatda ko'rinadi)
+        lock = "Sizga yangi xabar keldi" if unread <= 1 else f"Sizga {unread} ta yangi xabar keldi"
+        # Telegram — zaxira kanal: bitta suhbatdan daqiqasiga ko'pi bilan bitta (spam bo'lmasin); push esa har xabarda
+        tg = cache.add(f"tg-chat:{other.id}:{c.id}", 1, 60)
+        notify(other, "🔔 Avtora", f"{request.user.full_name}: {preview}" + (f"\n({unread} ta yangi xabar)" if unread > 1 else ""),
+               "chat", link, telegram=tg, urgent=True, tag=f"chat-{c.id}", push_body=lock, event="new_message", object_id=c.id)
         return Response(MessageSerializer(m, context={"request": request}).data, status=201)
 
 

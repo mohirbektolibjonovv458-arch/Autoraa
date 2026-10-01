@@ -220,7 +220,7 @@ class PushTests(TestCase):
         p = [json.loads(k["data"]) for k in chat]
         self.assertTrue(all(x["tag"] == f"chat-{conv.id}" and x["urgent"] for x in p))  # telefonda bitta, har safar jiringlaydi
         self.assertTrue(all(k["headers"]["Urgency"] == "high" for k in chat))
-        self.assertIn("3 ta", p[-1]["body"])
+        self.assertEqual(p[-1]["body"], "Sizga 3 ta yangi xabar keldi")
         self.assertNotIn("Javob", json.dumps(p, ensure_ascii=False))  # matn qulf ekraniga chiqmaydi
         # ilova ichidagi ro'yxat to'lib ketmaydi: suhbat bo'yicha bitta o'qilmagan yozuv
         self.assertEqual(self.u.notifications.filter(kind="chat", is_read=False).count(), 1)
@@ -270,12 +270,13 @@ class PushTests(TestCase):
         self.c(self.u).post(f"/api/chat/{conv.id}/messages/", {"text": "Manzilim: Chilonzor 5"}, format="json")
         process_pending()
         to_usta, to_client = self._payloads("usta"), self._payloads("client")
-        self.assertEqual(to_usta[0]["body"], "Mijoz sizga yangi xabar yubordi")
-        self.assertEqual(to_client[0]["body"], "Usta sizga yangi xabar yubordi")
+        self.assertEqual((to_usta[0]["title"], to_usta[0]["body"]), ("🔔 Avtora", "Sizga yangi xabar keldi"))
+        self.assertEqual((to_client[0]["title"], to_client[0]["body"]), ("🔔 Avtora", "Sizga yangi xabar keldi"))
+        self.assertEqual((to_usta[0]["type"], to_usta[0]["object_id"]), ("new_message", conv.id))
         for p in to_usta + to_client:
             self.assertEqual(p["url"], f"/app/chat/{conv.id}")
             blob = json.dumps(p, ensure_ascii=False)
-            for secret in ("01A777AA", "Chilonzor", "Ali", "Usta Usta"):
+            for secret in ("01A777AA", "Chilonzor", "Ali", "Usta", "Vali"):
                 self.assertNotIn(secret, blob)
 
     def test_req_no_push_when_recipient_is_viewing_that_chat(self):
@@ -305,12 +306,13 @@ class PushTests(TestCase):
         self.c(self.a).post("/api/sos/", {"kind": "evakuator", "lat": 41.31, "lng": 69.21}, format="json")
         process_pending()
         bk = self._payloads("usta")[0]
-        self.assertEqual(bk["body"], "Yangi bron so'rovi keldi. Ko'rish uchun bosing.")
+        self.assertEqual((bk["title"], bk["body"]), ("🔔 Yangi bron", "Sizga yangi xizmat bron qilindi"))
+        self.assertEqual((bk["type"], bk["object_id"]), ("new_booking", bid))
         self.assertEqual(bk["url"], f"/app/usta/orders?focus={bid}")
         self.assertNotIn("Ali", json.dumps(bk, ensure_ascii=False))
         sos = self._payloads("evak")[0]
         self.assertTrue(sos["title"].startswith("🚨 Avtora SOS")); self.assertIn("Yaqin atrofda yordam so'rovi mavjud", sos["body"])
-        self.assertEqual(sos["url"], "/app/evak"); self.assertTrue(sos["urgent"])
+        self.assertEqual(sos["url"], "/app/evak"); self.assertTrue(sos["urgent"]); self.assertEqual(sos["type"], "evacuator_request")
 
     def test_req_multiple_devices_all_receive(self):
         """7-talab: User → Device 1, 2, 3 — bittasi buzilsa ham qolganlariga yetadi."""
@@ -365,3 +367,33 @@ class PushTests(TestCase):
         self.subscribe(self.u, "phone2")  # login → syncPush
         notify(self.u, "📅 Yangi bron", urgent=True); process_pending()
         self.assertEqual(len(self.sent), 1)
+
+    def test_req_order_push_and_error_diagnostics_and_telegram_throttle(self):
+        """Buyurtma → sotuvchiga push (new_order); push xatosi saqlanadi va diagnostikada ko'rinadi; chat Telegram'i spam emas."""
+        from pywebpush import WebPushException
+        from market.models import Product, Shop
+        from django.utils import timezone as tz
+        self.u.premium_until = tz.now() + timedelta(days=30); self.u.save(update_fields=["premium_until"])
+        shop = Shop.objects.create(owner=self.u, name="Do'kon")
+        prod = Product.objects.create(shop=shop, name="Moy filtri", price=50000, stock=5)
+        self.subscribe(self.u, "usta")
+        r = self.c(self.a).post("/api/parts/orders/", {"items": [{"product": prod.id, "quantity": 1}], "address": "Toshkent", "phone": "+998901000301"}, format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        process_pending()
+        p = self._payloads("usta")[0]
+        self.assertEqual((p["title"], p["body"], p["type"]), ("🔔 Yangi buyurtma", "Sizga yangi buyurtma keldi", "new_order"))
+        self.assertTrue(p["urgent"])
+        # push xizmati xatosi saqlanadi (endpoint emas)
+        self.wp.side_effect = lambda **kw: (_ for _ in ()).throw(WebPushException("x", response=MagicMock(status_code=403, text="VAPID mismatch")))
+        notify(self.u, "t"); process_pending()
+        d = self.c(self.u).get("/api/push/status/").data
+        self.assertIn("403", d["last_error"]); self.assertIn("VAPID", d["last_error"])
+        # chat: push — har xabarda, Telegram — suhbat bo'yicha daqiqasiga bittadan
+        self.wp.side_effect = lambda **kw: self.sent.append(kw)
+        self.u.telegram_chat_id = 777; self.u.save(update_fields=["telegram_chat_id"])
+        conv = Conversation.objects.create(user1=self.a, user2=self.u)
+        with patch("accounts.utils.notify_user_telegram") as tg:
+            for i in range(3):
+                self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": str(i)}, format="json")
+            import time; time.sleep(0.3)
+        self.assertEqual(tg.call_count, 1)

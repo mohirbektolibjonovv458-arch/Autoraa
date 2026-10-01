@@ -23,13 +23,14 @@ def check(name, ok, info=""):
 
 class Phone:
     """Alohida telefon: o'z brauzer profili, service worker, push kaliti (p256dh/auth) va serverdagi obunasi."""
-    def __init__(self, pw, name, start):
+    def __init__(self, pw, name, start, who=None):
+        who = who or name  # qaysi hisob (bitta hisob — bir nechta telefon bo'lishi mumkin)
         self.name, self.seen = name, 0
         self.ctx = pw.chromium.launch_persistent_context(f"{S}/profile-{name}", headless=True,
                                                          executable_path=os.getenv("CHROMIUM_PATH") or None, args=["--no-sandbox"],
                                                          viewport={"width": 390, "height": 844})
         self.ctx.grant_permissions(["notifications", "geolocation"], origin=B)
-        a, r = IDS[name]
+        a, r = IDS[who]
         self.ctx.add_init_script(f"localStorage.setItem('ah_access','{a}');localStorage.setItem('ah_refresh','{r}');localStorage.setItem('ah_push_prompt_hidden_at','{int(time.time()*1000)}');")
         self.keeper = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()  # brauzer jarayoni (telefon) — ilova sahifasi emas
         self.cdp = self.ctx.new_cdp_session(self.keeper)
@@ -42,7 +43,7 @@ class Phone:
         self.key = ec.generate_private_key(ec.SECP256R1()); self.auth = os.urandom(16)
         pub = self.key.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
         self.endpoint = f"https://fcm.googleapis.com/fcm/send/e2e-{name}"
-        api("POST", "/push/subscribe/", name, {"endpoint": self.endpoint, "keys": {"p256dh": b64(pub), "auth": b64(self.auth)}})
+        api("POST", "/push/subscribe/", who, {"endpoint": self.endpoint, "keys": {"p256dh": b64(pub), "auth": b64(self.auth)}})
 
     def reg_id(self):
         return next(k for k, v in self.regs.items() if v.startswith(B))
@@ -91,7 +92,7 @@ with sync_playwright() as pw:
     bk = api("POST", "/masters/bookings/", "client", {"master": IDS["master_id"], "service": IDS["service_id"], "date": day, "time": "10:00"})
     got = usta.deliver()
     sh = usta.shown()
-    check("Test 3: bron → ustaga push (ilova yopiq)", any(n["body"] == "Yangi bron so'rovi keldi. Ko'rish uchun bosing." and n["url"] == f"/app/usta/orders?focus={bk['id']}" for n in sh),
+    check("Test 3: bron → ustaga push (ilova yopiq)", any(n["title"] == "🔔 Yangi bron" and n["body"] == "Sizga yangi xizmat bron qilindi" and n["url"] == f"/app/usta/orders?focus={bk['id']}" for n in sh),
           f"push={len(got)} ekranda={[(n['title'], n['body']) for n in sh]}")
     check("    Urgency: high (qulflangan/uxlayotgan telefonda kechikmaydi)", bool(got) and {k.lower(): v for k, v in got[0][1].items()}.get("urgency") == "high", str(got[0][1].get("urgency") if got else ""))
     usta.clear()
@@ -101,7 +102,7 @@ with sync_playwright() as pw:
     cid = api("POST", "/chat/start/", "client", {"user_id": uid})["id"]
     api("POST", f"/chat/{cid}/messages/", "client", {"text": "Salom, mashinam raqami 01A777AA"})
     got = usta.deliver(); sh = usta.shown()
-    check("Test 1: mijoz → usta chat push", any(n["body"] == "Mijoz sizga yangi xabar yubordi" and n["url"] == f"/app/chat/{cid}" for n in sh),
+    check("Test 1: mijoz → usta chat push", any(n["title"] == "🔔 Avtora" and n["body"] == "Sizga yangi xabar keldi" and n["url"] == f"/app/chat/{cid}" for n in sh),
           f"ekranda={[(n['title'], n['body']) for n in sh]}")
     check("    qulf ekranida maxfiy matn yo'q", not any("01A777AA" in json.dumps(n, ensure_ascii=False) or "Ali" in json.dumps(n, ensure_ascii=False) for n in sh))
 
@@ -110,7 +111,7 @@ with sync_playwright() as pw:
         api("POST", f"/chat/{cid}/messages/", "client", {"text": f"xabar {i}"}); time.sleep(0.3)
     got = usta.deliver(10); sh = usta.shown()
     check("Test 7: ketma-ket xabarlar hammasi telefonga yetdi", len(got) == 4, f"yetkazildi={len(got)}/4; oxirgisi={got[-1][0]['body'] if got else None}")
-    check("    telefonda bitta suhbat bildirishnomasi, oxirgi holat bilan", len([n for n in sh if n["tag"] == f"chat-{cid}"]) == 1 and any("5 ta" in n["body"] for n in sh),
+    check("    telefonda bitta suhbat bildirishnomasi, oxirgi holat bilan", len([n for n in sh if n["tag"] == f"chat-{cid}"]) == 1 and any(n["body"] == "Sizga 5 ta yangi xabar keldi" for n in sh),
           f"{[(n['tag'], n['body']) for n in sh]}")
     usta.clear()
 
@@ -118,7 +119,7 @@ with sync_playwright() as pw:
     client.app.goto(B + "/app/profile"); client.app.wait_for_timeout(800)
     api("POST", f"/chat/{cid}/messages/", "usta", {"text": "Ertaga soat 10 da keling"})
     got = client.deliver(); sh = client.shown()
-    check("Test 2: usta → mijoz chat push (mijoz boshqa sahifada)", any(n["body"] == "Usta sizga yangi xabar yubordi" and n["url"] == f"/app/chat/{cid}" for n in sh),
+    check("Test 2: usta → mijoz chat push (mijoz boshqa sahifada)", any(n["title"] == "🔔 Avtora" and n["body"] == "Sizga yangi xabar keldi" and n["url"] == f"/app/chat/{cid}" for n in sh),
           f"ekranda={[(n['title'], n['body']) for n in sh]}")
     client.clear()
 
@@ -146,6 +147,21 @@ with sync_playwright() as pw:
     got = evak.deliver(60)  # hech kim qabul qilmadi — 40 s da takror (ilova yopiq)
     sh = evak.shown()
     check("    SOS hech kim qabul qilmasa takror jiringlaydi (ilova yopiq)", any("hali kutyapti" in n["title"] for n in sh), f"{[n['title'] for n in sh]}")
+
+    # --- Test 7 (qurilmalar): ustaning 2-telefoni ham ulangan — ikkalasiga keladi; mijoz/evakuatorga aralashmaydi
+    usta2 = Phone(pw, "usta2", "/app/usta/orders", who="usta")
+    client.seen = sum(1 for l in open(CAP) if json.loads(l)["endpoint"] == client.endpoint)
+    evak.seen = sum(1 for l in open(CAP) if json.loads(l)["endpoint"] == evak.endpoint)
+    api("POST", f"/chat/{cid}/messages/", "client", {"text": "ikki telefon"})
+    g1, g2 = usta.deliver(), usta2.deliver()
+    check("Talab 7: bir userning 2 ta qurilmasi — ikkalasiga yetdi", len(g1) == 1 and len(g2) == 1, f"tel1={len(g1)} tel2={len(g2)}")
+    check("Talab 12–13: boshqa userlarga (mijoz, evakuator) ketmadi", not client.deliver(3) and not evak.deliver(2))
+    # --- Talab 9: bildirishnoma bosilganda — service worker ilovaga «shu sahifani och» deydi → aniq sahifa ochiladi
+    usta2.app.evaluate(f"navigator.serviceWorker.dispatchEvent(new MessageEvent('message', {{data: {{type: 'avtora-navigate', url: '/app/chat/{cid}'}}}}))")
+    usta2.app.wait_for_timeout(1500)
+    check("Talab 9: bosilganda tegishli chat ochiladi", usta2.app.url.endswith(f"/app/chat/{cid}"), usta2.app.url.replace(B, ""))
+    usta2.ctx.close()
+    time.sleep(13)  # 2-telefon chatni ochib turgan edi (12 s «ko'rib turibdi» belgisi) — u yopildi
 
     # --- Test 8: logout → login
     api("POST", "/push/unsubscribe/", "usta", {"endpoint": usta.endpoint})  # logout (disablePush)

@@ -208,9 +208,9 @@ class BookingListCreateView(APIView):
                 vehicle=vehicle, date=day, time=t, price=service.price if service else 0, note=str_in(d.get("note"))[:500],
             )
         car = f" · {vehicle.brand} {vehicle.model}".rstrip() if vehicle else ""
-        notify(master.user, "📅 Yangi bron", f"{request.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}{car}", "order",
+        notify(master.user, "🔔 Yangi bron", f"{request.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}{car}", "order",
                f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-new", urgent=True,
-               push_body="Yangi bron so'rovi keldi. Ko'rish uchun bosing.")
+               push_body="Sizga yangi xizmat bron qilindi", event="new_booking", object_id=b.id)
         notify(request.user, "Bron yuborildi", f"{b.service_name}, {b.date:%d.%m} soat {b.time}. Usta tasdiqlashini kuting.", "order",
                f"/app/orders?focus=booking-{b.id}", push=False)
         return Response(BookingSerializer(b).data, status=201)
@@ -244,11 +244,11 @@ class BookingStatusView(APIView):
             reason = str_in(request.data.get("reason"))[:200]
             body = f"{master_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}" + (f". Sabab: {reason}" if new == "cancelled" and reason else "")
             notify(b.user, titles.get(new, "Bron yangilandi"), body, "order",
-                   f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-{new}")
+                   f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-{new}", event="booking_update", object_id=b.id)
         else:
             notify(b.master.user, "❌ Mijoz bronni bekor qildi", f"{b.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}", "order",
                    f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-cancel", urgent=True,
-                   push_body="Mijoz bronni bekor qildi. Ko'rish uchun bosing.")
+                   push_body="Mijoz bronni bekor qildi. Ko'rish uchun bosing.", event="booking_update", object_id=b.id)
         if new == "completed":
             b.master.completed_jobs += 1
             b.master.save(update_fields=["completed_jobs"])
@@ -409,9 +409,9 @@ class BookingRescheduleView(APIView):
         new = f"{b.date:%d.%m} soat {b.time}"
         if is_master:
             notify(b.user, "🕒 Usta bron vaqtini o'zgartirdi", f"{b.service_name}: {old} → {new}", "order",
-                   f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}")
+                   f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}", event="booking_update", object_id=b.id)
         else:
             notify(b.master.user, "🕒 Mijoz bron vaqtini o'zgartirdi", f"{b.user.full_name}, {b.service_name}: {old} → {new}", "order",
                    f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}", urgent=True,
-                   push_body="Mijoz bron vaqtini o'zgartirdi. Ko'rish uchun bosing.")
+                   push_body="Mijoz bron vaqtini o'zgartirdi. Ko'rish uchun bosing.", event="booking_update", object_id=b.id)
         return Response(BookingSerializer(b).data)

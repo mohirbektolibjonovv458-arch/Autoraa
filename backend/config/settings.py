@@ -161,6 +161,7 @@ REST_FRAMEWORK = {
         "trip_progress": "40/min",  # SAFAR joylashuv yangilanishi
         "tiles": "3000/min",        # provayderdan yangi plita olish (IP bo'yicha; keshdagilar cheklanmaydi)
         "writes": "60/min",         # barcha yozish so'rovlari (foydalanuvchi bo'yicha)
+        "push_resub": "20/min",     # service worker'dan push token yangilash (login'siz, IP bo'yicha)
     },
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
 }
@@ -253,7 +254,9 @@ SAT_ENABLED = os.getenv("SAT_ENABLED", "1") == "1"
 # nusxalashda qo'shilib qolgan bo'shliq va qo'shtirnoqlar olib tashlanadi
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip().strip("'\"").strip()
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip().strip("'\"").strip()
-VAPID_SUBJECT = os.getenv("VAPID_SUBJECT") or f"mailto:admin@{DOMAIN or 'avtora.uz'}"
+# Push xizmatlari (Google, Apple, Mozilla) muammo bo'lsa shu manzilga murojaat qiladi. VAPID_EMAIL=siz@domen.uz ham yetadi.
+VAPID_SUBJECT = (os.getenv("VAPID_SUBJECT") or (f"mailto:{os.getenv('VAPID_EMAIL').strip()}" if os.getenv("VAPID_EMAIL") else "")
+                 or f"mailto:admin@{DOMAIN or 'avtora.uz'}")
 
 # --- Marshrut (core/routing.py) ---
 ROUTING_URL = os.getenv("ROUTING_URL") or "https://router.project-osrm.org/route/v1/{profile}/{coords}?overview=full&geometries=geojson&steps=true"

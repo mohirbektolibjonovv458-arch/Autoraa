@@ -81,8 +81,9 @@ class PartOrderView(APIView):
             prod.save(update_fields=["stock", "sold"])
             o = PartOrder.objects.create(user=request.user, shop=prod.shop, product=prod, product_name=prod.name,
                                          quantity=qty, price=prod.price, total=prod.price * qty, address=address, phone=phone)
-            notify(prod.shop.owner, "📦 Yangi zapchast buyurtmasi", f"{prod.name} × {qty} — {o.total:,} so'm".replace(",", " "),
-                   "order", "/app/usta/shop?tab=orders", telegram=True, dedup=f"po-{o.id}-new")
+            notify(prod.shop.owner, "🔔 Yangi buyurtma", f"{prod.name} × {qty} — {o.total:,} so'm".replace(",", " "),
+                   "order", "/app/usta/shop?tab=orders", telegram=True, dedup=f"po-{o.id}-new", urgent=True,
+                   push_body="Sizga yangi buyurtma keldi", event="new_order", object_id=o.id)
             created.append(o)
         return Response(PartOrderSerializer(created, many=True, context={"request": request}).data, status=201)
 
@@ -180,7 +181,7 @@ class MyShopOrderStatusView(APIView):
         o.status = new
         o.save(update_fields=["status"])
         notify(o.user, f"📦 Buyurtma: {o.get_status_display()}", o.product_name, "order", f"/app/orders?focus=part-{o.id}", telegram=True,
-               dedup=f"po-{o.id}-{new}")
+               dedup=f"po-{o.id}-{new}", event="order_update", object_id=o.id)
         return Response(PartOrderSerializer(o, context={"request": request}).data)
 
 

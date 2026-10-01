@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BellOff, BellRing, Share } from "lucide-react";
-import { disablePush, enablePush, pushState, PushState } from "../push";
+import { disablePush, enablePush, inAppBrowser, pushState, PushState } from "../push";
 import { useToast } from "./ui";
 import { useAuth } from "../auth";
 import PushHelp from "./PushHelp";
@@ -37,7 +37,8 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
       else if (r === "service-error") toast("Telefonning bildirishnoma xizmati javob bermadi. Internetni tekshirib, qayta urinib ko'ring.", "error");
     } catch (e: any) {
       const http = e?.response?.status;
-      toast(http ? "Server obunani qabul qilmadi. Sahifani yangilab, qayta urinib ko'ring." : `Bildirishnomani yoqib bo'lmadi (${e?.name || "xato"}). Sahifani yangilab, qayta urinib ko'ring.`, "error");
+      const detail = e?.response?.data?.detail;
+      toast(http ? (detail || "Server obunani qabul qilmadi. Sahifani yangilab, qayta urinib ko'ring.") : `Bildirishnomani yoqib bo'lmadi (${e?.name || "xato"}). Sahifani yangilab, qayta urinib ko'ring.`, "error");
     }
     finally { setBusy(false); }
   };
@@ -48,21 +49,28 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
     on: "Bu qurilmada yoqilgan. Bron, xabar, SOS va buyurtmalar haqida xabar keladi.",
     denied: "Brauzerda ruxsat berilmagan. Sayt sozlamalari (🔒 belgisi) → Bildirishnomalar → Ruxsat berish.",
     "ios-install": "iPhone'da bildirishnomalar faqat bosh ekranga o'rnatilgan ilovada ishlaydi: Safari → Ulashish → «Bosh ekranga qo'shish».",
-    unsupported: "Bu brauzer push bildirishnomalarni qo'llamaydi. Chrome, Edge, Firefox yoki Safari'ning yangi versiyasidan foydalaning.",
+    unsupported: inAppBrowser()
+      ? "Siz saytni Telegram/Instagram ichidagi brauzerda ochgansiz — u bildirishnomalarni qo'llamaydi. ⋮ menyu → «Chrome'da ochish» (yoki Safari) ni bosing."
+      : "Bu brauzer push bildirishnomalarni qo'llamaydi. Chrome, Edge, Firefox yoki Safari'ning yangi versiyasidan foydalaning.",
     "server-off": "Bildirishnomalar serverda hali sozlanmagan.",
     "service-error": "Telefonning bildirishnoma xizmati javob bermadi.",
   };
 
   if (variant === "banner") {
-    const msg = worker && st === "off"
-      ? "Mijoz bron qilganda telefoningiz qulflangan yoki ilova yopiq bo'lsa ham darhol xabar keladi. Busiz bronlarni o'tkazib yuborasiz."
-      : text[st];
+    const later = () => { try { localStorage.setItem(HIDE_KEY, String(Date.now())); } catch { /* */ } setHidden(true); };
+    const msg = st === "off"
+      ? (worker ? "Bron, xabar va SOS haqida ilova yopiq yoki boshqa ilovada bo'lsangiz ham darhol xabar oling. Busiz buyurtmalarni o'tkazib yuborasiz."
+        : "Bronlar, xabarlar va muhim buyurtmalar haqida bildirishnomalarni oling.")
+      : text[st];  // ruxsat berilmagan — qayta so'ramaymiz, sozlamalardan qanday yoqishni ko'rsatamiz
     return (
-      <div className="push-banner">
+      <div className="push-banner" role="region" aria-label="Bildirishnomalar">
         <BellRing size={20} />
-        <div className="grow"><b className="small">Bildirishnomalarni yoqing</b><div className="xs">{msg}</div></div>
-        {st === "off" && <button className="btn btn-sm" disabled={busy} onClick={on}>{busy ? "…" : "Yoqish"}</button>}
-        <button className="icon-btn" style={{ width: 30, height: 30 }} aria-label="Yopish" onClick={() => { try { localStorage.setItem(HIDE_KEY, String(Date.now())); } catch { /* */ } setHidden(true); }}>×</button>
+        <div className="grow"><b className="small">🔔 Muhim xabarlarni o'tkazib yubormang</b><div className="xs">{msg}</div>
+          <div className="row gap-8 mt-8">
+            {st === "off" && <button className="btn btn-sm" disabled={busy} onClick={on}>{busy ? "…" : "Bildirishnomalarni yoqish"}</button>}
+            <button className="btn btn-sm btn-ghost" onClick={later}>Keyinroq</button>
+          </div>
+        </div>
       </div>
     );
   }
