@@ -20,6 +20,12 @@ const b64ToBytes = (b64: string) => {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 };
 
+/** Telegram/Instagram/Facebook ichidagi brauzer (WebView) — Web Push yo'q, Chrome/Safari'da ochish kerak */
+export function inAppBrowser() {
+  const ua = navigator.userAgent || "";
+  return /Instagram|FBAN|FBAV|FB_IAB|Telegram|TelegramBot|Line\/|; wv\)/i.test(ua);
+}
+
 export function pushSupported() {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }

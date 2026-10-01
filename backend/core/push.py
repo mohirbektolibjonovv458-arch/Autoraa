@@ -63,16 +63,31 @@ def enabled():
 
 def payload_for(n):
     unread = n.user.notifications.filter(is_read=False).count()
+    # Faqat umumiy matn va havola — xabar matni, ism, telefon, manzil kabi shaxsiy ma'lumot qulf ekraniga chiqmaydi
     return json.dumps({
+        "type": n.event or n.kind,          # new_message, new_booking, new_order, evacuator_request, ...
         "title": n.title,
         "body": n.push_body,
         "url": n.link or "/app/notifications",
+        "object_id": n.object_id,
         "tag": n.dedup_key or f"{n.kind}-{n.id}",
         "id": n.id,
         "kind": n.kind,
         "unread": unread,
         "urgent": n.urgent,
     }, ensure_ascii=False)
+
+
+def _remember_error(sub, text):
+    """Oxirgi yetkazish xatosi — foydalanuvchi diagnostikasi va admin uchun (endpoint saqlanmaydi)."""
+    sub.last_error, sub.last_error_at = text[:160], timezone.now()
+
+
+def _resp_text(exc):
+    try:
+        return (exc.response.text or "").strip().replace("\n", " ")[:100]
+    except Exception:
+        return ""
 
 
 def send_to_subscription(sub, data, urgent=False, topic=None):
@@ -96,12 +111,13 @@ def send_to_subscription(sub, data, urgent=False, topic=None):
                 data=data, vapid_private_key=settings.VAPID_PRIVATE_KEY,
                 vapid_claims={"sub": settings.VAPID_SUBJECT}, ttl=24 * 3600, headers=headers, timeout=10,
             )
-            sub.failures, sub.last_success = 0, timezone.now()
-            sub.save(update_fields=["failures", "last_success"])
+            sub.failures, sub.last_success, sub.last_error = 0, timezone.now(), ""
+            sub.save(update_fields=["failures", "last_success", "last_error"])
             return True
         except WebPushException as exc:
             code, err = getattr(exc.response, "status_code", None), None
             if code in (404, 410):  # obuna bekor qilingan / muddati o'tgan
+                log.info("Web Push: obuna %s muddati o'tgan (%s) — o'chirildi", sub.id, code)
                 sub.delete()
                 return False
             if code in (400, 403):
@@ -109,9 +125,12 @@ def send_to_subscription(sub, data, urgent=False, topic=None):
                 # Ilova keyingi ochilishida (syncPush) yangi token olib serverga yozadi va obuna qayta faollashadi.
                 sub.is_active = False
                 sub.failures += 1
-                sub.save(update_fields=["is_active", "failures"])
-                log.warning("Web Push: token yaroqsiz (%s), obuna %s o'chirildi — qurilma ilovani ochganda yangilanadi", code, sub.id)
+                _remember_error(sub, f"{code} {_resp_text(exc)}")
+                sub.save(update_fields=["is_active", "failures", "last_error", "last_error_at"])
+                log.warning("Web Push: token yaroqsiz (%s %s), obuna %s o'chirildi — qurilma ilovani ochganda yangilanadi",
+                            code, _resp_text(exc), sub.id)
                 return False
+            err = f"{code} {_resp_text(exc)}"
             if not (code is None or code == 429 or code >= 500):
                 break  # 400/401/403/413 — qayta urinish foyda bermaydi
         except Exception as exc:
@@ -119,7 +138,8 @@ def send_to_subscription(sub, data, urgent=False, topic=None):
     sub.failures += 1
     if sub.failures >= 5:
         sub.is_active = False
-    sub.save(update_fields=["failures", "is_active"])
+    _remember_error(sub, str(err or code))
+    sub.save(update_fields=["failures", "is_active", "last_error", "last_error_at"])
     log.warning("Web Push xatosi %s (obuna %s)", err or code, sub.id)
     return False
 

@@ -28,6 +28,7 @@ export default function PushDiag({ localOn }: { localOn: boolean }) {
       <summary className="small"><b>Diagnostika: xabarlar telefonga yetyaptimi?</b></summary>
       <div className="col gap-4 mt-4 xs">
         <b>{verdict}</b>
+        {d.last_error && <span style={{ color: "var(--red)" }}>Push xizmatining oxirgi javobi: {d.last_error}{d.last_error_at ? ` (${timeAgo(d.last_error_at)})` : ""}</span>}
         <span className="muted">Ulangan telefonlar: {d.devices}{d.broken_devices ? ` (+${d.broken_devices} ishlamaydigan)` : ""} · Oxirgi muvaffaqiyatli yetkazish: {d.last_success ? timeAgo(d.last_success) : "hali yo'q"} · Telegram: {d.telegram ? "ulangan ✅" : "ulanmagan ❌"}</span>
         {recent.length > 0 && <span className="muted">Oxirgi xabarlar:</span>}
         {recent.map((r, i) => <span key={i}>{(STATE[r.push] || ["•", r.push])[0]} {r.title} — {(STATE[r.push] || ["", r.push])[1]} <span className="muted">({timeAgo(r.at)})</span></span>)}

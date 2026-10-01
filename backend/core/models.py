@@ -19,6 +19,9 @@ class Notification(models.Model):
     push_body = models.CharField(max_length=200, blank=True)  # qulf ekranida ko'rinadigan (maxfiy bo'lmagan) matn
     dedup_key = models.CharField(max_length=80, blank=True, db_index=True)
     urgent = models.BooleanField(default=False)
+    # push payload uchun: hodisa turi (new_message, new_booking, new_order, evacuator_request ...) va tegishli obyekt ID
+    event = models.CharField(max_length=24, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -36,6 +39,9 @@ class PushSubscription(models.Model):
     failures = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     last_success = models.DateTimeField(null=True, blank=True)
+    # oxirgi yetkazish xatosi (push xizmati javobi) — diagnostika uchun; endpoint/kalitlar API orqali qaytarilmaydi
+    last_error = models.CharField(max_length=160, blank=True)
+    last_error_at = models.DateTimeField(null=True, blank=True)
 
 
 class SiteSettings(models.Model):
@@ -74,7 +80,8 @@ class BlogPost(models.Model):
         ordering = ["-created_at"]
 
 
-def notify(user, title, body="", kind="system", link="", telegram=False, push=True, push_body=None, dedup=None, urgent=False, tag=None):
+def notify(user, title, body="", kind="system", link="", telegram=False, push=True, push_body=None, dedup=None, urgent=False, tag=None,
+           event="", object_id=None):
     """Bitta joydan: ilova ichidagi bildirishnoma + telefon/brauzerga Web Push (+ ixtiyoriy Telegram).
     dedup — bir xil hodisa qisqa vaqtda qayta kelsa, takroriy bildirishnoma yaratilmaydi.
     tag — dedup'siz guruhlash (masalan, bitta suhbat): telefonda oldingi bildirishnoma yangisi bilan almashtiriladi
@@ -85,7 +92,7 @@ def notify(user, title, body="", kind="system", link="", telegram=False, push=Tr
         return None
     has_device = push and user.push_subs.filter(is_active=True).exists()
     n = Notification.objects.create(user=user, title=title[:150], body=body[:1000], kind=kind, link=link[:200],
-                                    dedup_key=(dedup or tag or "")[:80], urgent=urgent,
+                                    dedup_key=(dedup or tag or "")[:80], urgent=urgent, event=(event or "")[:24], object_id=object_id,
                                     push_body=(body if push_body is None else push_body)[:200],
                                     push_state="pending" if has_device else ("none" if push else "off"))
     if has_device:

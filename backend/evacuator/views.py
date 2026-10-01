@@ -39,7 +39,8 @@ def alert_providers(sos, round_no=0):
         if notify(p, title, f"{dtxt} uzoqlikda yordam kerak. {sos.address}".strip(), "sos",
                   "/app/evak" if role == "evakuator" else "/app/usta/sos", telegram=True, urgent=True,
                   dedup=f"sos-{sos.id}-new" if not round_no else f"sos-{sos.id}-r{round_no}-{cycle}",
-                  push_body=f"Yaqin atrofda yordam so'rovi mavjud ({dtxt}). Qabul qilish uchun bosing."):
+                  push_body=f"Yaqin atrofda yordam so'rovi mavjud ({dtxt}). Qabul qilish uchun bosing.",
+                  event="evacuator_request" if role == "evakuator" else "sos_request", object_id=sos.id):
             sent += 1
     return sent
 

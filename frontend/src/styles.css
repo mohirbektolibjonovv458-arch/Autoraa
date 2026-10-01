@@ -643,6 +643,8 @@ h1, h2, h3, b, p, .small, .xs { overflow-wrap: break-word; }
 @media (max-width: 360px) { .fuel-tabs button { font-size: 12.5px; padding: 9px 4px; } .fuel-tabs .tdot { margin-right: 4px; } }
 .push-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(135deg, #13233f, #0a1424); color: #fff; }
 .push-banner .xs { color: #aab8cf; }
+.push-banner .btn { background: #fff; color: #0a1424; border-color: #fff; }
+.push-banner .btn.btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.35); }
 .icon-btn { position: relative; }
 .bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; }
 .focus-hit { outline: 2px solid var(--blue); box-shadow: 0 0 0 6px rgba(31,111,235,.15); }

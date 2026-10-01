@@ -99,6 +99,19 @@ self.addEventListener("message", (e) => {
 
 
 /* ================= Web Push: ilova yopiq bo'lsa ham bildirishnoma ================= */
+// Hodisa turi → sahifa (server odatda aniq url yuboradi; bu — zaxira)
+function routeFor(type, id) {
+  switch (type) {
+    case "new_message": return id ? `/app/chat/${id}` : "/app/chat";
+    case "new_booking": case "booking_update": return id ? `/app/usta/orders?focus=${id}` : "/app/usta/orders";
+    case "new_order": return "/app/usta/shop?tab=orders";
+    case "order_update": return id ? `/app/orders?focus=part-${id}` : "/app/orders";
+    case "evacuator_request": return "/app/evak";
+    case "sos_request": return "/app/usta/sos";
+    default: return "/app/notifications";
+  }
+}
+
 self.addEventListener("push", (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { title: "Avtora", body: event.data ? event.data.text() : "" }; }
@@ -116,7 +129,7 @@ self.addEventListener("push", (event) => {
     // SOS — telefon qo'ng'irog'iga o'xshash uzun tebranish
     vibrate: sos ? [600, 250, 600, 250, 600, 250, 1200] : d.urgent ? [200, 100, 200, 100, 300] : [120],
     timestamp: Date.now(),
-    data: { url: d.url || "/app/notifications", id: d.id },
+    data: { url: d.url || routeFor(d.type, d.object_id), id: d.id, type: d.type, object_id: d.object_id },
   };
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -135,7 +148,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const raw = (event.notification.data && event.notification.data.url) || "/app/notifications";
+  const nd = event.notification.data || {};
+  const raw = nd.url || routeFor(nd.type, nd.object_id);
   const url = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/app/notifications"; // faqat o'z saytimiz ichida
   event.waitUntil((async () => {
     const wins = (await self.clients.matchAll({ type: "window", includeUncontrolled: true }))
