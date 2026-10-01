@@ -41,7 +41,8 @@ function Room({ id }: { id: string }) {
   const box = useRef<HTMLDivElement>(null);
   const lastId = useRef(0);
 
-  const fetchNew = () => api.get(`/chat/${id}/messages/`, { params: lastId.current ? { after: lastId.current } : {} }).then((r) => {
+  // active=1 — suhbat ekranda ko'rinib turibdi: server shu suhbatning yangi xabarlari uchun push yubormaydi (oyna o'zi yangilanadi)
+  const fetchNew = () => api.get(`/chat/${id}/messages/`, { params: { ...(lastId.current ? { after: lastId.current } : {}), ...(document.visibilityState === "visible" ? { active: 1 } : {}) } }).then((r) => {
     setOther(r.data.other);
     if (r.data.messages.length) { lastId.current = r.data.messages[r.data.messages.length - 1].id; setMsgs((m) => [...m, ...r.data.messages.filter((x: any) => !m.some((y) => y.id === x.id))]); }
   });

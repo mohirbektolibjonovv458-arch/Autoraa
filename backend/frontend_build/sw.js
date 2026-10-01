@@ -8,7 +8,7 @@
  *  - /api/*, /media/*, xarita plitalari va boshqa domenlar: HECH QACHON keshlanmaydi —
  *    eskirgan ma'lumot (buyurtma, SOS, narx, chat) ko'rsatilmaydi.
  */
-const VERSION = "c69b44f9feeb";
+const VERSION = "ec2046cac99a";
 const PRECACHE = `avtora-precache-${VERSION}`;
 const RUNTIME = `avtora-runtime-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -25,66 +25,66 @@ const PRECACHE_URLS = [
   "/brand/avtora-logo.png",
   "/brand/mark-light.png",
   "/brand/mark-dark.png",
-  "/assets/AdminLogin-CWWLoaFT.js",
-  "/assets/AdminShell-CujeFPpz.js",
-  "/assets/Analytics-_I5t2z8P.js",
-  "/assets/Blog-DWWTJzil.js",
-  "/assets/Blog-DpdiQHOi.js",
-  "/assets/Cars-CTxgIXrI.js",
-  "/assets/Chats-DKAawq-V.js",
-  "/assets/Dashboard-C829g9H1.js",
-  "/assets/EvakHome-Dql_by3W.js",
-  "/assets/Favorites--lJ9KmKa.js",
-  "/assets/Fuel-CHQVjV4C.js",
-  "/assets/FuelPage-DvhCpei5.js",
-  "/assets/FuelPublic-DZzYPy8T.js",
-  "/assets/ImagePicker-5juC41no.js",
-  "/assets/LiveMap-DQhWt4jl.js",
-  "/assets/MapPage-BcuIf8Xd.js",
-  "/assets/MasterDetail-BgBCIGmS.js",
-  "/assets/Masters--pCpDfe0.js",
-  "/assets/Masters-BSZjPxv_.js",
-  "/assets/MastersTabs-Bb4GEV7W.js",
-  "/assets/Notifications-BPbfr5-Z.js",
-  "/assets/Orders-BDKNW2hW.js",
-  "/assets/Orders-BSrK_AfN.js",
-  "/assets/Parts-CGa1lJbT.js",
-  "/assets/Payments-GLHVrLsk.js",
-  "/assets/ProductDetail-CCZF5FcT.js",
-  "/assets/Profile-DGDUmJGA.js",
-  "/assets/ProviderJobs-C1jBm7PB.js",
-  "/assets/Register-BvkkYgK1.js",
-  "/assets/RescheduleModal-Dk1zYWxm.js",
-  "/assets/Safar-BKfynOXQ.js",
-  "/assets/Search-D0kgxSvD.js",
-  "/assets/Settings-COOG_FAw.js",
-  "/assets/ShopPage-BpDhFXa1.js",
-  "/assets/Shops-o6dCpdx2.js",
-  "/assets/SlotPicker-CGvN16eh.js",
-  "/assets/Sos-B8Gh9xAt.js",
-  "/assets/Terms-Di1F13zv.js",
-  "/assets/Users-CkDjg8YR.js",
-  "/assets/UstaHome-_244yrhK.js",
-  "/assets/UstaOrders-ceLgNOCj.js",
-  "/assets/UstaPremium-25S5YaAD.js",
-  "/assets/UstaServices-DUmXYNw6.js",
-  "/assets/UstaShop-DYBXGUyU.js",
-  "/assets/UstaSos-BIBWCubd.js",
-  "/assets/arrow-left-ES68XOsW.js",
-  "/assets/camera-Dx1j6SEn.js",
-  "/assets/cart-Cdd8by69.js",
-  "/assets/circle-check-Dv8RkPSU.js",
-  "/assets/circle-dot-BSPfvfjL.js",
-  "/assets/credit-card-DtDAmMTR.js",
-  "/assets/generateCategoricalChart-CxWuqqpr.js",
-  "/assets/heart-DIGPFvRW.js",
-  "/assets/image-plus-CKOzdfcq.js",
-  "/assets/index-DfXW0NUl.js",
+  "/assets/AdminLogin-D3fHhzMl.js",
+  "/assets/AdminShell-BeYRh7Gz.js",
+  "/assets/Analytics-3LzNYN6n.js",
+  "/assets/Blog-Ct810zOZ.js",
+  "/assets/Blog-e01v7Zwm.js",
+  "/assets/Cars-BytR_rrr.js",
+  "/assets/Chats-5iU59QKM.js",
+  "/assets/Dashboard-z11XwtuU.js",
+  "/assets/EvakHome-AvwQqRIF.js",
+  "/assets/Favorites-0UWJl2Gn.js",
+  "/assets/Fuel-B4zQ6T0k.js",
+  "/assets/FuelPage-D4QmMH4s.js",
+  "/assets/FuelPublic-Bt8r80OM.js",
+  "/assets/ImagePicker-Du_wmu0G.js",
+  "/assets/LiveMap-C2dYnM8s.js",
+  "/assets/MapPage-DNfh-lwr.js",
+  "/assets/MasterDetail-En1HuaLu.js",
+  "/assets/Masters-BGtM5mo5.js",
+  "/assets/Masters-C5oEA42H.js",
+  "/assets/MastersTabs-JO-twU-N.js",
+  "/assets/Notifications-De4FYWkT.js",
+  "/assets/Orders-BGjX1p3P.js",
+  "/assets/Orders-Dee_USAK.js",
+  "/assets/Parts-BLBwvuqg.js",
+  "/assets/Payments-BU9nCxFk.js",
+  "/assets/ProductDetail-BizcG30O.js",
+  "/assets/Profile-DdsK7Nbm.js",
+  "/assets/ProviderJobs-BgSMPUOR.js",
+  "/assets/Register-DcltWLNe.js",
+  "/assets/RescheduleModal-OiMPR9jp.js",
+  "/assets/Safar-DzuO2ngy.js",
+  "/assets/Search-CYquGNmL.js",
+  "/assets/Settings-CUbOjEtJ.js",
+  "/assets/ShopPage-DTjoUZOi.js",
+  "/assets/Shops-BReI_IYn.js",
+  "/assets/SlotPicker-kabWI84P.js",
+  "/assets/Sos-gs7H1N5r.js",
+  "/assets/Terms-DENnvptZ.js",
+  "/assets/Users-BmJTjT9e.js",
+  "/assets/UstaHome-CN3FSSOX.js",
+  "/assets/UstaOrders-CnfyCl7v.js",
+  "/assets/UstaPremium-Y9SFEYDW.js",
+  "/assets/UstaServices-B8oiPhB7.js",
+  "/assets/UstaShop-Tzn_Rq85.js",
+  "/assets/UstaSos-C9qFUkuj.js",
+  "/assets/arrow-left-CE2ZXs_4.js",
+  "/assets/camera-DG8l9u0b.js",
+  "/assets/cart-CSsfySjG.js",
+  "/assets/circle-check-BlVfprlC.js",
+  "/assets/circle-dot-BPy9GEHp.js",
+  "/assets/credit-card-CeLpORH-.js",
+  "/assets/generateCategoricalChart-CuQADc3r.js",
+  "/assets/heart-DgOcpTs-.js",
+  "/assets/image-plus-D1szfZr_.js",
+  "/assets/index-C3Bj-ewb.js",
   "/assets/index-Kv5kjx2x.css",
-  "/assets/pencil-oQvOjOfW.js",
-  "/assets/share-2-BQn_wUfe.js",
-  "/assets/shield-check-BbHdwboF.js",
-  "/assets/trash-2-Dz65LXHQ.js"
+  "/assets/pencil-2JtN4eKT.js",
+  "/assets/share-2-De_VPpz2.js",
+  "/assets/shield-check-DYzKun1E.js",
+  "/assets/trash-2-CgMzdpKO.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -190,12 +190,16 @@ self.addEventListener("push", (event) => {
     data: { url: d.url || "/app/notifications", id: d.id },
   };
   event.waitUntil((async () => {
-    await self.registration.showNotification(title, options);
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // foydalanuvchi aynan shu sahifani (masalan, shu chatni) hozir ekranda ko'rib turibdi — tizim bildirishnomasi
+    // ortiqcha, sahifaning o'zi yangilanadi. Boshqa sahifada, boshqa ilovada yoki ekran o'chiq bo'lsa — ko'rsatiladi.
+    const target = d.url ? new URL(d.url, self.location.origin).pathname : "";
+    const watching = d.kind === "chat" && target && wins.some((w) => w.focused && w.visibilityState === "visible" && new URL(w.url).pathname === target);
+    if (!watching) await self.registration.showNotification(title, options);
     if (typeof d.unread === "number" && self.navigator.setAppBadge) {
       try { d.unread > 0 ? await self.navigator.setAppBadge(d.unread) : await self.navigator.clearAppBadge(); } catch (e) { /* */ }
     }
     // ochiq oynalar darhol yangilansin (hisoblagich, ro'yxat)
-    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     wins.forEach((w) => w.postMessage({ type: "avtora-push", payload: d }));
   })());
 });
@@ -205,13 +209,15 @@ self.addEventListener("notificationclick", (event) => {
   const raw = (event.notification.data && event.notification.data.url) || "/app/notifications";
   const url = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/app/notifications"; // faqat o'z saytimiz ichida
   event.waitUntil((async () => {
-    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const w of wins) {
-      if (new URL(w.url).origin === self.location.origin) {
-        await w.focus();
-        w.postMessage({ type: "avtora-navigate", url });
-        return;
-      }
+    const wins = (await self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .filter((w) => new URL(w.url).origin === self.location.origin);
+    // ilova ichidagi (/app) oyna afzal: u sahifani qayta yuklamasdan kerakli joyga o'tadi
+    const w = wins.find((x) => new URL(x.url).pathname.startsWith("/app")) || wins[0];
+    if (w) {
+      try { await w.focus(); } catch (e) { /* */ }
+      if (new URL(w.url).pathname.startsWith("/app")) w.postMessage({ type: "avtora-navigate", url });
+      else if (w.navigate) await w.navigate(url);  // ochiq sahifa ilova emas (masalan, bosh sahifa) — to'g'ridan-to'g'ri ochamiz
+      return;
     }
     await self.clients.openWindow(url);
   })());

@@ -80,6 +80,13 @@ class StartConversationView(APIView):
         return Response({"id": c.id})
 
 
+VIEWING_TTL = 12  # soniya
+
+
+def viewing_key(user_id, conv_id):
+    return f"chat-viewing:{user_id}:{conv_id}"
+
+
 class MessagesView(APIView):
     def get_conv(self, request, pk):
         return get_object_or_404(my_conversations(request.user), pk=pk)
@@ -93,6 +100,11 @@ class MessagesView(APIView):
         else:
             after = None
             qs = list(qs.order_by("-id")[:300])[::-1]  # oxirgi 300 ta xabar
+        if request.query_params.get("active") == "1":
+            # foydalanuvchi aynan shu suhbatni ekranda ko'rib turibdi (sahifa ko'rinib turganda har 3 soniyada so'raydi) —
+            # yangi xabar kelsa push yuborilmaydi, faqat chat oynasi yangilanadi
+            from django.core.cache import cache
+            cache.set(viewing_key(request.user.id, c.id), 1, VIEWING_TTL)
         c.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
         # suhbat ochildi — shu suhbat haqidagi bildirishnoma ham o'qilgan (keyingi xabar yana Telegramga keladi)
         request.user.notifications.filter(kind="chat", is_read=False, link=f"/app/chat/{c.id}").update(is_read=True)
@@ -125,6 +137,10 @@ class MessagesView(APIView):
         m = Message.objects.create(conversation=c, sender=request.user, text=text, image=image, lat=lat, lng=lng)
         c.save()
         other = c.other(request.user)
+        from django.core.cache import cache
+        if cache.get(viewing_key(other.id, c.id)):
+            # qabul qiluvchi aynan shu chatni ochib turibdi — chat oynasi o'zi yangilanadi, push/Telegram shart emas
+            return Response(MessageSerializer(m, context={"request": request}).data, status=201)
         # HAR bir xabar haqida xabar beriladi (oldin: birinchi bildirishnoma o'qilmaguncha keyingilari jim qolardi).
         # Ro'yxat to'lib ketmasligi uchun shu suhbatning o'qilmagan bildirishnomasi bittaga yig'iladi,
         # telefonda esa bitta bildirishnoma yangilanib, har safar qayta jiringlaydi (tag + urgent).
@@ -132,9 +148,11 @@ class MessagesView(APIView):
         other.notifications.filter(kind="chat", is_read=False, link=link).delete()
         unread = Message.objects.filter(conversation=c, sender=request.user, is_read=False).count()
         preview = text[:100] or "📎 Rasm yoki joylashuv"
-        notify(other, f"💬 {request.user.full_name}", preview if unread <= 1 else f"{preview}\n({unread} ta yangi xabar)", "chat", link,
-               telegram=True, urgent=True, tag=f"chat-{c.id}",
-               push_body="Sizga yangi xabar keldi" if unread <= 1 else f"Sizga {unread} ta yangi xabar keldi")
+        who = {"usta": "Usta", "evakuator": "Evakuator", "admin": "Avtora"}.get(request.user.role, "Mijoz")
+        # qulf ekranida faqat umumiy matn: kim yozgani (rol) va nechta xabar — ism va xabar matni ko'rinmaydi
+        lock = f"{who} sizga yangi xabar yubordi" if unread <= 1 else f"{who} sizga {unread} ta yangi xabar yubordi"
+        notify(other, "💬 Yangi xabar", f"{request.user.full_name}: {preview}" + (f"\n({unread} ta yangi xabar)" if unread > 1 else ""),
+               "chat", link, telegram=True, urgent=True, tag=f"chat-{c.id}", push_body=lock)
         return Response(MessageSerializer(m, context={"request": request}).data, status=201)
 
 

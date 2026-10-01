@@ -119,12 +119,16 @@ self.addEventListener("push", (event) => {
     data: { url: d.url || "/app/notifications", id: d.id },
   };
   event.waitUntil((async () => {
-    await self.registration.showNotification(title, options);
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // foydalanuvchi aynan shu sahifani (masalan, shu chatni) hozir ekranda ko'rib turibdi — tizim bildirishnomasi
+    // ortiqcha, sahifaning o'zi yangilanadi. Boshqa sahifada, boshqa ilovada yoki ekran o'chiq bo'lsa — ko'rsatiladi.
+    const target = d.url ? new URL(d.url, self.location.origin).pathname : "";
+    const watching = d.kind === "chat" && target && wins.some((w) => w.focused && w.visibilityState === "visible" && new URL(w.url).pathname === target);
+    if (!watching) await self.registration.showNotification(title, options);
     if (typeof d.unread === "number" && self.navigator.setAppBadge) {
       try { d.unread > 0 ? await self.navigator.setAppBadge(d.unread) : await self.navigator.clearAppBadge(); } catch (e) { /* */ }
     }
     // ochiq oynalar darhol yangilansin (hisoblagich, ro'yxat)
-    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     wins.forEach((w) => w.postMessage({ type: "avtora-push", payload: d }));
   })());
 });
@@ -134,13 +138,15 @@ self.addEventListener("notificationclick", (event) => {
   const raw = (event.notification.data && event.notification.data.url) || "/app/notifications";
   const url = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/app/notifications"; // faqat o'z saytimiz ichida
   event.waitUntil((async () => {
-    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const w of wins) {
-      if (new URL(w.url).origin === self.location.origin) {
-        await w.focus();
-        w.postMessage({ type: "avtora-navigate", url });
-        return;
-      }
+    const wins = (await self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .filter((w) => new URL(w.url).origin === self.location.origin);
+    // ilova ichidagi (/app) oyna afzal: u sahifani qayta yuklamasdan kerakli joyga o'tadi
+    const w = wins.find((x) => new URL(x.url).pathname.startsWith("/app")) || wins[0];
+    if (w) {
+      try { await w.focus(); } catch (e) { /* */ }
+      if (new URL(w.url).pathname.startsWith("/app")) w.postMessage({ type: "avtora-navigate", url });
+      else if (w.navigate) await w.navigate(url);  // ochiq sahifa ilova emas (masalan, bosh sahifa) — to'g'ridan-to'g'ri ochamiz
+      return;
     }
     await self.clients.openWindow(url);
   })());

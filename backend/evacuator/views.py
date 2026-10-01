@@ -35,11 +35,11 @@ def alert_providers(sos, round_no=0):
         if dist is not None and dist > radius:
             continue
         dtxt = f"{dist:.1f} km" if dist is not None else "Yaqin atrofda"
-        title = f"🆘 SOS: {sos.get_kind_display()}" if not round_no else f"🆘 SOS hali kutyapti ({round_no}): {sos.get_kind_display()}"
+        title = f"🚨 Avtora SOS: {sos.get_kind_display()}" if not round_no else f"🚨 Avtora SOS — hali kutyapti ({round_no})"
         if notify(p, title, f"{dtxt} uzoqlikda yordam kerak. {sos.address}".strip(), "sos",
                   "/app/evak" if role == "evakuator" else "/app/usta/sos", telegram=True, urgent=True,
                   dedup=f"sos-{sos.id}-new" if not round_no else f"sos-{sos.id}-r{round_no}-{cycle}",
-                  push_body=f"{dtxt} uzoqlikda yordam kerak. Qabul qilish uchun oching."):
+                  push_body=f"Yaqin atrofda yordam so'rovi mavjud ({dtxt}). Qabul qilish uchun bosing."):
             sent += 1
     return sent
 

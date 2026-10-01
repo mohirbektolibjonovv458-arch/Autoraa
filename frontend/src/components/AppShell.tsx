@@ -144,7 +144,7 @@ export function useCounts() {
             const here = window.location.pathname;
             const fresh = items.filter((x) => x.id > (lastId.current as number)
               && (x.kind === "order" || x.kind === "sos" || (x.kind === "chat" && x.link !== here)));  // ochiq suhbat haqida emas
-            const sos = fresh.find((x) => x.kind === "sos" && x.title.startsWith("🆘"));
+            const sos = fresh.find((x) => x.kind === "sos" && x.title.startsWith("🚨"));  // yordamchiga kelgan SOS (mijozga holat xabarlari emas)
             if (sos) {
               // SOS — qo'ng'iroqdek takrorlanadigan signal va katta oyna (yordamchi ko'rmaguncha)
               window.dispatchEvent(new CustomEvent("avtora-sos-alarm", { detail: sos }));
@@ -209,13 +209,17 @@ export default function AppShell() {
   const badge = (b?: string) => (b === "notif" ? counts.notif : b === "chat" ? counts.chat : 0);
   const go = useNavigate();
   useEffect(() => {
-    syncPush();  // qurilma obunasi serverda dolzarb bo'lsin
+    syncPush();  // qurilma obunasi (push token) serverda dolzarb bo'lsin
+    // ilovaga qaytilganda ham tokenni tekshiramiz (brauzer uni almashtirgan yoki server o'chirgan bo'lishi mumkin) — 5 daqiqada bir
+    let lastSync = Date.now();
+    const onVis = () => { if (document.visibilityState === "visible" && Date.now() - lastSync > 5 * 60 * 1000) { lastSync = Date.now(); syncPush(); } };
+    document.addEventListener("visibilitychange", onVis);
     const onMsg = (e: MessageEvent) => {
       const url = e.data?.type === "avtora-navigate" ? String(e.data.url || "") : "";
       if (url.startsWith("/") && !url.startsWith("//")) go(url);  // bildirishnoma bosilganda kerakli sahifa
     };
     navigator.serviceWorker?.addEventListener("message", onMsg);
-    return () => navigator.serviceWorker?.removeEventListener("message", onMsg);
+    return () => { navigator.serviceWorker?.removeEventListener("message", onMsg); document.removeEventListener("visibilitychange", onVis); };
   }, []);
 
   return (
