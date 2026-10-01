@@ -104,6 +104,14 @@ def send_to_subscription(sub, data, urgent=False, topic=None):
             if code in (404, 410):  # obuna bekor qilingan / muddati o'tgan
                 sub.delete()
                 return False
+            if code in (400, 403):
+                # token yaroqsiz yoki boshqa VAPID kalit bilan olingan — bu token bilan endi yuborib bo'lmaydi.
+                # Ilova keyingi ochilishida (syncPush) yangi token olib serverga yozadi va obuna qayta faollashadi.
+                sub.is_active = False
+                sub.failures += 1
+                sub.save(update_fields=["is_active", "failures"])
+                log.warning("Web Push: token yaroqsiz (%s), obuna %s o'chirildi — qurilma ilovani ochganda yangilanadi", code, sub.id)
+                return False
             if not (code is None or code == 429 or code >= 500):
                 break  # 400/401/403/413 — qayta urinish foyda bermaydi
         except Exception as exc:

@@ -116,7 +116,12 @@ elif os.getenv("POSTGRES_DB"):
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_PATH") or BASE_DIR / "db.sqlite3", "OPTIONS": {"timeout": 20}}}
+    # Fon jarayonlari (push, SOS takroriy ogohlantirish, eslatmalar) va so'rovlar bir vaqtda yozadi:
+    # IMMEDIATE — tranzaksiya boshidayoq yozish qulfini kutadi («database is locked» xatosi o'rniga navbat),
+    # WAL — o'qish yozishni to'smaydi.
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_PATH") or BASE_DIR / "db.sqlite3",
+                             "OPTIONS": {"timeout": 20, "transaction_mode": "IMMEDIATE",
+                                         "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;"}}}
 
 AUTH_USER_MODEL = "accounts.User"
 LANGUAGE_CODE = "en-us"

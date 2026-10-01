@@ -257,3 +257,111 @@ class PushTests(TestCase):
         self.assertEqual(d["devices"], 1); self.assertIsNotNone(d["last_success"])
         self.assertEqual([r["push"] for r in d["recent"]], ["sent", "none"])
         self.assertNotIn("usta-secret", json.dumps(d, default=str))
+
+    # ===== To'liq talablar bo'yicha testlar (1–8) =====
+    def _payloads(self, ep):
+        return [json.loads(k["data"]) for k in self.sent if k["subscription_info"]["endpoint"].endswith("/" + ep)]
+
+    def test_req_chat_both_directions_generic_lock_text(self):
+        """Test 1–2: User → Usta va Usta → User; qulf ekranida maxfiy matn yo'q; bosilganda shu chat ochiladi."""
+        self.subscribe(self.a, "client"); self.subscribe(self.u, "usta")
+        conv = Conversation.objects.create(user1=self.a, user2=self.u)
+        self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": "Mashinam raqami 01A777AA"}, format="json")
+        self.c(self.u).post(f"/api/chat/{conv.id}/messages/", {"text": "Manzilim: Chilonzor 5"}, format="json")
+        process_pending()
+        to_usta, to_client = self._payloads("usta"), self._payloads("client")
+        self.assertEqual(to_usta[0]["body"], "Mijoz sizga yangi xabar yubordi")
+        self.assertEqual(to_client[0]["body"], "Usta sizga yangi xabar yubordi")
+        for p in to_usta + to_client:
+            self.assertEqual(p["url"], f"/app/chat/{conv.id}")
+            blob = json.dumps(p, ensure_ascii=False)
+            for secret in ("01A777AA", "Chilonzor", "Ali", "Usta Usta"):
+                self.assertNotIn(secret, blob)
+
+    def test_req_no_push_when_recipient_is_viewing_that_chat(self):
+        """9-talab: usta aynan shu chatni ochib turgan bo'lsa — push yo'q; chatdan chiqsa — push bor."""
+        from django.core.cache import cache as c_
+        from chat.views import viewing_key
+        self.subscribe(self.u, "usta")
+        conv = Conversation.objects.create(user1=self.a, user2=self.u)
+        self.c(self.u).get(f"/api/chat/{conv.id}/messages/", {"active": "1"})  # usta chatni ko'rib turibdi
+        self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": "1"}, format="json"); process_pending()
+        self.assertEqual(self._payloads("usta"), [])
+        c_.delete(viewing_key(self.u.id, conv.id))  # usta chatdan chiqdi / ilovani yopdi (12 s o'tdi)
+        self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": "2"}, format="json"); process_pending()
+        self.assertEqual(len(self._payloads("usta")), 1)
+        # fonda turgan sahifa (active yo'q) push'ni to'xtatmaydi
+        self.c(self.u).get(f"/api/chat/{conv.id}/messages/")
+        self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": "3"}, format="json"); process_pending()
+        self.assertEqual(len(self._payloads("usta")), 2)
+
+    def test_req_booking_and_sos_texts_and_links(self):
+        """Test 3–4: bron → ustaga (bron sahifasiga), SOS → evakuatorga; umumiy matn."""
+        self.subscribe(self.u, "usta")
+        ev = User.objects.create_user(phone="+998901000306", role="evakuator", first_name="Ev", is_online=True, lat=41.3, lng=69.2)
+        EvacuatorProfile.objects.create(user=ev); self.subscribe(ev, "evak")
+        day = str(date.today() + timedelta(days=1))
+        bid = self.c(self.a).post("/api/masters/bookings/", {"master": self.m.id, "service": self.svc.id, "date": day, "time": "12:00"}, format="json").data["id"]
+        self.c(self.a).post("/api/sos/", {"kind": "evakuator", "lat": 41.31, "lng": 69.21}, format="json")
+        process_pending()
+        bk = self._payloads("usta")[0]
+        self.assertEqual(bk["body"], "Yangi bron so'rovi keldi. Ko'rish uchun bosing.")
+        self.assertEqual(bk["url"], f"/app/usta/orders?focus={bid}")
+        self.assertNotIn("Ali", json.dumps(bk, ensure_ascii=False))
+        sos = self._payloads("evak")[0]
+        self.assertTrue(sos["title"].startswith("🚨 Avtora SOS")); self.assertIn("Yaqin atrofda yordam so'rovi mavjud", sos["body"])
+        self.assertEqual(sos["url"], "/app/evak"); self.assertTrue(sos["urgent"])
+
+    def test_req_multiple_devices_all_receive(self):
+        """7-talab: User → Device 1, 2, 3 — bittasi buzilsa ham qolganlariga yetadi."""
+        from pywebpush import WebPushException
+        for d in ("d1", "d2", "d3"):
+            self.subscribe(self.u, d)
+
+        def fake(**kw):
+            if kw["subscription_info"]["endpoint"].endswith("d2"):
+                raise WebPushException("x", response=MagicMock(status_code=410))
+            self.sent.append(kw)
+        self.wp.side_effect = fake
+        notify(self.u, "📅 Yangi bron", urgent=True); process_pending()
+        self.assertEqual(sorted(k["subscription_info"]["endpoint"][-2:] for k in self.sent), ["d1", "d3"])
+        self.assertFalse(PushSubscription.objects.filter(endpoint=FCM + "d2").exists())  # yaroqsiz token tozalandi
+        self.assertEqual(Notification.objects.get(user=self.u).push_state, "sent")
+
+    def test_req_invalid_token_replaced_by_new(self):
+        """8-talab: token yaroqsiz (403/VAPID) → o'chiriladi; ilova yangi token yuboradi → keyingilari yangi token orqali."""
+        from pywebpush import WebPushException
+        self.subscribe(self.u, "old")
+        self.wp.side_effect = lambda **kw: (_ for _ in ()).throw(WebPushException("x", response=MagicMock(status_code=403)))
+        notify(self.u, "1", urgent=True); process_pending()
+        self.assertFalse(PushSubscription.objects.get(endpoint=FCM + "old").is_active)
+        self.assertEqual(self.wp.call_count, 1)
+        self.wp.side_effect = lambda **kw: self.sent.append(kw)
+        self.subscribe(self.u, "new")  # syncPush: ilova ochilganda yangi token
+        notify(self.u, "2", urgent=True); process_pending()
+        self.assertEqual([k["subscription_info"]["endpoint"][-3:] for k in self.sent], ["new"])
+
+    def test_req_sequential_notifications_all_delivered(self):
+        """Test 7: ketma-ket 10 ta xabar — hammasi yetadi, birinchisida to'xtab qolmaydi."""
+        self.subscribe(self.u, "usta")
+        conv = Conversation.objects.create(user1=self.a, user2=self.u)
+        day = date.today() + timedelta(days=2)
+        for i in range(5):
+            self.c(self.a).post(f"/api/chat/{conv.id}/messages/", {"text": f"m{i}"}, format="json")
+            process_pending()
+        for t in ("10:00", "11:00", "13:00"):
+            self.c(self.b).post("/api/masters/bookings/", {"master": self.m.id, "service": self.svc.id, "date": str(day), "time": t}, format="json")
+            process_pending()
+        p = self._payloads("usta")
+        self.assertEqual(sum(1 for x in p if x["kind"] == "chat"), 5)
+        self.assertEqual(sum(1 for x in p if "bron" in x["body"].lower()), 2)  # 3-bron: «2 ta faol bron» chegarasi
+
+    def test_req_logout_login_keeps_push(self):
+        """Test 8: logout → qurilma obunasi o'chadi (boshqa odamga xabar bormaydi); login → yangi obuna, push davom etadi."""
+        self.subscribe(self.u, "phone")
+        self.c(self.u).post("/api/push/unsubscribe/", {"endpoint": FCM + "phone"}, format="json")  # logout
+        notify(self.u, "logout paytida"); process_pending()
+        self.assertEqual(self.sent, [])
+        self.subscribe(self.u, "phone2")  # login → syncPush
+        notify(self.u, "📅 Yangi bron", urgent=True); process_pending()
+        self.assertEqual(len(self.sent), 1)

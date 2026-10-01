@@ -277,6 +277,23 @@ Ilova yopiq bo'lsa ham telefon yoki kompyuterning bildirishnoma paneliga xabar k
 
 **Kalitlar:** VAPID kalitlari birinchi ishga tushishda avtomatik yaratilib, `.env` ga yoziladi. Maxfiy kalit faqat serverda turadi. Railway'da ularni Variables'ga ko'chiring va boshqa o'zgartirmang — aks holda barcha qurilmalar qayta obuna bo'lishi kerak.
 
+**Zanjir:** voqea (chat / bron / SOS) → backend → navbat (bazada, outbox) → fon yuboruvchi → Web Push (VAPID, shifrlangan) → push provayder (Android/Chrome: Google FCM, iPhone: Apple, Firefox: Mozilla) → service worker → telefon bildirishnomasi. Firebase loyihasi yoki kaliti kerak emas — Chrome FCM'dan o'zi foydalanadi.
+
+**Production uchun kerak:**
+- HTTPS domen (Railway domeni yetadi).
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` — Railway Variables'da, **hech qachon o'zgartirmang** (o'zgarsa barcha qurilmalar qayta ulanadi). Ixtiyoriy: `VAPID_SUBJECT=mailto:siz@domen.uz`.
+- `SECRET_KEY` — Variables'da doimiy.
+- Railway'da Autoraa xizmatiga Volume (`/data`) va `MEDIA_ROOT=/data/media` — rasmlar deploy'da o'chmasligi uchun.
+- Bitta replika (`numReplicas: 1`) — fon yuboruvchi va SOS takroriy ogohlantirish server ichida ishlaydi.
+- Tekshirish: `/api/health/` → `"push": "ok"`.
+
+**Telefon (OS) cheklovlari — kod bilan chetlab bo'lmaydi:**
+- Android: Chrome uchun batareya tejash «Cheklovsiz» va (Xiaomi/Oppo/Vivo/Huawei) «Avtomatik ishga tushirish» yoqilgan bo'lishi kerak — ilovadagi yo'riqnomada bor.
+- iPhone: faqat bosh ekranga o'rnatilgan ilovada (iOS 16.4+).
+- Shaxsiy ringtone va «Bezovta qilmang»ni yorib o'tish faqat native ilovada (Play Market) mumkin. Hozircha zaxira kanal — Telegram bot (har bir chat/bron/SOS u yerga ham boradi, botga alohida ovoz qo'yish mumkin).
+- Diagnostika: Profil → push kartasi → «Diagnostika» va «Sinov xabarini yuborish».
+- Avtomatik sinov: `e2e/push_chain/` (README ichida).
+
 **Yetkazish:**
 - Xabarlar bazadagi navbat orqali fon jarayonida yuboriladi, server qayta ishga tushsa ham yo'qolmaydi.
 - Yaroqsiz qurilmalar avtomatik o'chiriladi.

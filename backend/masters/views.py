@@ -209,7 +209,8 @@ class BookingListCreateView(APIView):
             )
         car = f" · {vehicle.brand} {vehicle.model}".rstrip() if vehicle else ""
         notify(master.user, "📅 Yangi bron", f"{request.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}{car}", "order",
-               f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-new", urgent=True)
+               f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-new", urgent=True,
+               push_body="Yangi bron so'rovi keldi. Ko'rish uchun bosing.")
         notify(request.user, "Bron yuborildi", f"{b.service_name}, {b.date:%d.%m} soat {b.time}. Usta tasdiqlashini kuting.", "order",
                f"/app/orders?focus=booking-{b.id}", push=False)
         return Response(BookingSerializer(b).data, status=201)
@@ -246,7 +247,8 @@ class BookingStatusView(APIView):
                    f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-{new}")
         else:
             notify(b.master.user, "❌ Mijoz bronni bekor qildi", f"{b.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}", "order",
-                   f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-cancel", urgent=True)
+                   f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-cancel", urgent=True,
+                   push_body="Mijoz bronni bekor qildi. Ko'rish uchun bosing.")
         if new == "completed":
             b.master.completed_jobs += 1
             b.master.save(update_fields=["completed_jobs"])
@@ -410,5 +412,6 @@ class BookingRescheduleView(APIView):
                    f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}")
         else:
             notify(b.master.user, "🕒 Mijoz bron vaqtini o'zgartirdi", f"{b.user.full_name}, {b.service_name}: {old} → {new}", "order",
-                   f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}", urgent=True)
+                   f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-re-{b.date}-{b.time}", urgent=True,
+                   push_body="Mijoz bron vaqtini o'zgartirdi. Ko'rish uchun bosing.")
         return Response(BookingSerializer(b).data)
