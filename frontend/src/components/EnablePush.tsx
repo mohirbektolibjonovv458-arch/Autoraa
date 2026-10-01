@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BellOff, BellRing, Share } from "lucide-react";
 import { disablePush, enablePush, pushState, PushState } from "../push";
 import { useToast } from "./ui";
+import { useAuth } from "../auth";
 
 const HIDE_KEY = "ah_push_prompt_hidden_at";
 
@@ -10,13 +11,18 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
   const toast = useToast();
   const [st, setSt] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  // usta/evakuator uchun push — ish quroli (yangi bron, SOS): banner faqat 1 kunga yopiladi, mijozga — 14 kunga
+  const worker = user?.role === "usta" || user?.role === "evakuator";
   const [hidden, setHidden] = useState(() => {
-    const t = Number(localStorage.getItem(HIDE_KEY) || 0);
-    return variant === "banner" && Date.now() - t < 14 * 864e5;
+    let t = 0;
+    try { t = Number(localStorage.getItem(HIDE_KEY) || 0); } catch { /* */ }
+    return variant === "banner" && Date.now() - t < (worker ? 1 : 14) * 864e5;
   });
   useEffect(() => { pushState().then(setSt); }, []);
   if (!st || hidden) return null;
-  if (variant === "banner" && st !== "off") return null; // banner faqat yoqilmagan va yoqish mumkin bo'lganda
+  // banner: yoqilmagan bo'lsa; usta/evakuatorga — brauzerda taqiqlangan yoki iPhone'da o'rnatilmagan bo'lsa ham ko'rsatamiz
+  if (variant === "banner" && !(st === "off" || (worker && (st === "denied" || st === "ios-install")))) return null;
 
   const on = async () => {
     setBusy(true);
@@ -46,12 +52,15 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
   };
 
   if (variant === "banner") {
+    const msg = worker && st === "off"
+      ? "Mijoz bron qilganda telefoningiz qulflangan yoki ilova yopiq bo'lsa ham darhol xabar keladi. Busiz bronlarni o'tkazib yuborasiz."
+      : text[st];
     return (
       <div className="push-banner">
         <BellRing size={20} />
-        <div className="grow"><b className="small">Bildirishnomalarni yoqing</b><div className="xs">{text.off}</div></div>
-        <button className="btn btn-sm" disabled={busy} onClick={on}>{busy ? "…" : "Yoqish"}</button>
-        <button className="icon-btn" style={{ width: 30, height: 30 }} aria-label="Yopish" onClick={() => { localStorage.setItem(HIDE_KEY, String(Date.now())); setHidden(true); }}>×</button>
+        <div className="grow"><b className="small">Bildirishnomalarni yoqing</b><div className="xs">{msg}</div></div>
+        {st === "off" && <button className="btn btn-sm" disabled={busy} onClick={on}>{busy ? "…" : "Yoqish"}</button>}
+        <button className="icon-btn" style={{ width: 30, height: 30 }} aria-label="Yopish" onClick={() => { try { localStorage.setItem(HIDE_KEY, String(Date.now())); } catch { /* */ } setHidden(true); }}>×</button>
       </div>
     );
   }

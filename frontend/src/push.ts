@@ -38,9 +38,22 @@ export async function pushState(): Promise<PushState> {
   return sub && Notification.permission === "granted" ? "on" : "off";
 }
 
+// service worker obunani o'zi yangilaganda (pushsubscriptionchange) eski manzilni shu yerdan oladi — sw.template.js
+const META = "avtora-meta";
+const PUSH_EP_KEY = "/__avtora/push-endpoint";
+
+async function rememberEndpoint(endpoint: string | null) {
+  try {
+    const c = await caches.open(META);
+    if (endpoint) await c.put(PUSH_EP_KEY, new Response(endpoint));
+    else await c.delete(PUSH_EP_KEY);
+  } catch { /* */ }
+}
+
 async function sendToServer(sub: PushSubscription) {
   const j = sub.toJSON();
   await api.post("/push/subscribe/", { endpoint: j.endpoint, keys: j.keys });
+  await rememberEndpoint(j.endpoint || null);
 }
 
 /** Foydalanuvchi «Yoqish» bosganda. Ruxsat so'raladi faqat shu yerda (sahifa ochilishida emas). */
@@ -96,6 +109,7 @@ export async function disablePush() {
       await api.post("/push/unsubscribe/", { endpoint: sub.endpoint }).catch(() => {});
       await sub.unsubscribe();
     }
+    await rememberEndpoint(null);
     (navigator as any).clearAppBadge?.();
   } catch { /* */ }
 }

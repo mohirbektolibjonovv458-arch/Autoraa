@@ -31,6 +31,7 @@ class PushTests(TestCase):
         self.sent = []
         self.wp = patch("pywebpush.webpush", side_effect=lambda **kw: self.sent.append(kw)).start()
         patch("core.push.wake_worker").start()
+        patch("core.push.RETRY_PAUSES", (0, 0, 0)).start()
         self.addCleanup(patch.stopall)
         self.a = User.objects.create_user(phone="+998901000301", first_name="Ali", role="user")
         self.b = User.objects.create_user(phone="+998901000302", first_name="Vali", role="user")
@@ -140,3 +141,53 @@ class PushTests(TestCase):
         self.assertTrue(any(p["kind"] == "sos" and p["urgent"] for p in evak))
         self.assertTrue(any("Yordam topildi" in p["title"] and p["url"] == f"/app/sos?id={sid}" for p in client))
         self.assertTrue(all(k["headers"]["Urgency"] in ("high", "normal") for k in self.sent))
+
+    # --- usta: yangi bron telefon qulflangan / ilova yopiq bo'lsa ham darhol (yuqori ustuvorlik)
+    def test_new_booking_reaches_master_urgently(self):
+        self.subscribe(self.u, "usta")
+        day = str(date.today() + timedelta(days=1))
+        bid = self.c(self.a).post("/api/masters/bookings/", {"master": self.m.id, "service": self.svc.id, "date": day, "time": "11:00"}, format="json").data["id"]
+        process_pending()
+        k = next(k for k in self.sent if json.loads(k["data"])["title"].endswith("Yangi bron"))
+        self.assertEqual(k["headers"]["Urgency"], "high")  # Android Doze rejimida ham kechikmaydi
+        p = json.loads(k["data"])
+        self.assertTrue(p["urgent"]); self.assertEqual(p["url"], f"/app/usta/orders?focus={bid}")
+        self.sent.clear()
+        self.c(self.a).post(f"/api/masters/bookings/{bid}/status/", {"status": "cancelled"}, format="json")
+        process_pending()
+        self.assertTrue(any(k["headers"]["Urgency"] == "high" and "bekor" in json.loads(k["data"])["title"] for k in self.sent))
+
+    def test_transient_error_retried(self):
+        from pywebpush import WebPushException
+        self.subscribe(self.u, "usta")
+        calls = []
+
+        def flaky(**kw):
+            calls.append(1)
+            if len(calls) < 3:
+                raise WebPushException("x", response=MagicMock(status_code=503))
+            self.sent.append(kw)
+        self.wp.side_effect = flaky
+        notify(self.u, "📅 Yangi bron", urgent=True); process_pending()
+        self.assertEqual(len(calls), 3); self.assertEqual(len(self.sent), 1)
+        self.assertEqual(Notification.objects.get(user=self.u).push_state, "sent")
+        self.assertEqual(PushSubscription.objects.get(endpoint=FCM + "usta").failures, 0)
+
+    def test_permanent_error_not_retried(self):
+        from pywebpush import WebPushException
+        self.subscribe(self.u, "usta")
+        self.wp.side_effect = lambda **kw: (_ for _ in ()).throw(WebPushException("x", response=MagicMock(status_code=400)))
+        notify(self.u, "t"); process_pending()
+        self.assertEqual(self.wp.call_count, 1)
+
+    def test_resubscribe_keeps_owner(self):
+        self.subscribe(self.u, "old")
+        anon = APIClient()
+        body = {"old_endpoint": FCM + "old", "endpoint": FCM + "new", "keys": {"p256dh": "BNc" + "y" * 80, "auth": "newauth"}}
+        self.assertEqual(anon.post("/api/push/resubscribe/", body, format="json").status_code, 200)
+        self.assertFalse(PushSubscription.objects.filter(endpoint=FCM + "old").exists())
+        self.assertEqual(PushSubscription.objects.get(endpoint=FCM + "new").user, self.u)
+        # noma'lum eski manzil bilan begona obunani o'g'irlab bo'lmaydi
+        self.assertEqual(anon.post("/api/push/resubscribe/", {**body, "old_endpoint": FCM + "guess"}, format="json").status_code, 404)
+        bad = {**body, "old_endpoint": FCM + "new", "endpoint": "https://evil.com/x"}
+        self.assertEqual(anon.post("/api/push/resubscribe/", bad, format="json").status_code, 400)

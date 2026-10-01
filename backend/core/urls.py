@@ -10,6 +10,7 @@ urlpatterns = [
     path("push/key/", push_views.PushKeyView.as_view()),
     path("push/subscribe/", push_views.PushSubscribeView.as_view()),
     path("push/unsubscribe/", push_views.PushUnsubscribeView.as_view()),
+    path("push/resubscribe/", push_views.PushResubscribeView.as_view()),
     path("push/status/", push_views.PushStatusView.as_view()),
     path("notifications/", views.NotificationListView.as_view()),
     path("notifications/read/", views.NotificationReadView.as_view()),

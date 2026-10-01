@@ -282,6 +282,11 @@ Ilova yopiq bo'lsa ham telefon yoki kompyuterning bildirishnoma paneliga xabar k
 - Yaroqsiz qurilmalar avtomatik o'chiriladi.
 - Bir xil hodisa takror yuborilmaydi.
 - Chat matni telefon ekraniga chiqmaydi.
+- **Yangi bron ustaga yuqori ustuvorlik bilan** yuboriladi (telefon qulflangan, uxlash rejimida yoki ilova yopiq bo'lsa ham darhol keladi). Mijoz bronni bekor qilsa yoki vaqtini o'zgartirsa ham shunday.
+- Push xizmati vaqtincha javob bermasa (tarmoq, 429, 5xx) — xabar 3 marta qayta yuboriladi.
+- Brauzer obunani o'zi yangilasa — service worker yangi obunani serverga o'zi yozadi, ilovani ochish shart emas.
+- Ilova ochiq turganda yangi bron/SOS kelsa — ekranda xabar va ovozli signal (push yoqilmagan bo'lsa ham).
+- Ustada bildirishnomalar yoqilmagan bo'lsa — eslatma banneri har kuni chiqadi. Telegram'ga ulangan bo'lsa, bron xabari Telegram'ga ham boradi.
 
 ---
 

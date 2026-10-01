@@ -75,18 +75,62 @@ const NAV: Record<string, { side: Item[]; bottom: Item[] }> = {
   },
 };
 
+/** Qisqa signal (ilova ochiq turganda yangi bron/SOS kelsa). Brauzer ruxsat bermasa — jim o'tib ketadi. */
+function chime() {
+  try {
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    ctx.resume?.().catch?.(() => {});
+    [0, 0.18].forEach((at, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = i ? 1175 : 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.16);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + 0.17);
+    });
+    setTimeout(() => ctx.close?.().catch?.(() => {}), 800);
+  } catch { /* */ }
+}
+
 export function useCounts() {
   const [c, setC] = useState({ notif: 0, chat: 0 });
+  const toast = useToast();
+  const lastId = useRef<number | null>(null);
   useEffect(() => {
     const load = () =>
       Promise.all([api.get("/notifications/?unread=1"), api.get("/chat/unread/")])
-        .then(([n, ch]) => setC({ notif: n.data.unread, chat: ch.data.unread }))
+        .then(([n, ch]) => {
+          setC({ notif: n.data.unread, chat: ch.data.unread });
+          // ilova ochiq turganda yangi bron / SOS — ekranda xabar + ovoz (push yoqilmagan bo'lsa ham o'tkazib yuborilmaydi)
+          const items: any[] = n.data.results || [];
+          const maxId = items.reduce((m, x) => Math.max(m, x.id || 0), lastId.current || 0);
+          if (lastId.current !== null) {
+            const fresh = items.filter((x) => x.id > (lastId.current as number) && (x.kind === "order" || x.kind === "sos"));
+            if (fresh.length) {
+              toast(`🔔 ${fresh[0].title}${fresh[0].body ? " — " + fresh[0].body : ""}`, "success");
+              // push ruxsati bo'lmasa tizim bildirishnomasi chiqmaydi — o'zimiz signal beramiz (ikki marta ovoz chiqmasin)
+              const systemShown = "Notification" in window && Notification.permission === "granted";
+              if (!systemShown) { chime(); (navigator as any).vibrate?.([200, 100, 200]); }
+              window.dispatchEvent(new Event("avtora-push"));
+            }
+          }
+          lastId.current = maxId;
+        })
         .catch(() => {});
     load();
     const id = setInterval(load, 15000);
     const onMsg = (e: MessageEvent) => { if (e.data?.type === "avtora-push") { load(); window.dispatchEvent(new Event("avtora-push")); } };
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
     navigator.serviceWorker?.addEventListener("message", onMsg);
-    return () => { clearInterval(id); navigator.serviceWorker?.removeEventListener("message", onMsg); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      navigator.serviceWorker?.removeEventListener("message", onMsg);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
   useEffect(() => {
     const nav: any = navigator;

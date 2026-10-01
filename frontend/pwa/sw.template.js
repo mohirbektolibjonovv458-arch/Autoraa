@@ -12,6 +12,8 @@ const VERSION = "__VERSION__";
 const PRECACHE = `avtora-precache-${VERSION}`;
 const RUNTIME = `avtora-runtime-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const META = "avtora-meta";            // versiyadan mustaqil: push obuna manzili (pushsubscriptionchange uchun)
+const PUSH_EP_KEY = "/__avtora/push-endpoint";
 const PRECACHE_URLS = __PRECACHE__;
 
 self.addEventListener("install", (event) => {
@@ -25,7 +27,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    const keep = new Set([PRECACHE, RUNTIME]);
+    const keep = new Set([PRECACHE, RUNTIME, META]);
     for (const k of await caches.keys()) if (!keep.has(k)) await caches.delete(k);
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
     await self.clients.claim();
@@ -137,5 +139,33 @@ self.addEventListener("notificationclick", (event) => {
       }
     }
     await self.clients.openWindow(url);
+  })());
+});
+
+/* Brauzer push obunasini o'zi yangilasa (muddati tugashi, kalit almashishi) — ilova ochilmasa ham
+ * yangi obuna serverga yoziladi. Aks holda usta keyingi safar ilovani ochguncha bron xabarlarini olmay qoladi. */
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil((async () => {
+    try {
+      const meta = await caches.open(META);
+      const saved = await meta.match(PUSH_EP_KEY);
+      const old = (event.oldSubscription && event.oldSubscription.endpoint) || (saved ? await saved.text() : "");
+      if (!old) return;
+      let sub = event.newSubscription;
+      if (!sub) {
+        const k = await (await fetch("/api/push/key/", { credentials: "omit" })).json();
+        if (!k.enabled || !k.public_key) return;
+        const pad = "=".repeat((4 - (k.public_key.length % 4)) % 4);
+        const raw = atob((k.public_key + pad).replace(/-/g, "+").replace(/_/g, "/"));
+        const appKey = Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+        sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
+      }
+      const j = sub.toJSON();
+      const res = await fetch("/api/push/resubscribe/", {
+        method: "POST", credentials: "omit", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_endpoint: old, endpoint: j.endpoint, keys: j.keys }),
+      });
+      if (res.ok) await meta.put(PUSH_EP_KEY, new Response(j.endpoint));
+    } catch (e) { /* keyingi safar ilova ochilganda syncPush() tuzatadi */ }
   })());
 });

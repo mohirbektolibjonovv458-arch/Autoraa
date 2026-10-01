@@ -8,6 +8,7 @@ Oqim: hodisa (bron, chat, SOS...) → notify() → Notification(push_state="pend
 """
 import json
 import logging
+import sys
 import threading
 import time
 from datetime import timedelta
@@ -36,6 +37,8 @@ def endpoint_allowed(url):
     host = (u.hostname or "").lower()
     return u.scheme == "https" and any(host == h or host.endswith("." + h) for h in ALLOWED_PUSH_HOSTS)
 
+
+RETRY_PAUSES = (0, 1, 3)  # soniya: 1-urinish darhol, keyin 1 s va 3 s kutib
 
 _KEY_STATE = {}
 
@@ -82,31 +85,35 @@ def send_to_subscription(sub, data, urgent=False, topic=None):
     headers = {"Urgency": "high" if urgent else "normal"}
     if topic:
         headers["Topic"] = "".join(ch for ch in topic if ch.isalnum())[:32]  # takroriy xabar qurilmada almashtiriladi
-    try:
-        webpush(
-            subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
-            data=data, vapid_private_key=settings.VAPID_PRIVATE_KEY,
-            vapid_claims={"sub": settings.VAPID_SUBJECT}, ttl=24 * 3600, headers=headers, timeout=10,
-        )
-        sub.failures, sub.last_success = 0, timezone.now()
-        sub.save(update_fields=["failures", "last_success"])
-        return True
-    except WebPushException as exc:
-        code = getattr(exc.response, "status_code", None)
-        if code in (404, 410):  # obuna bekor qilingan / muddati o'tgan
-            sub.delete()
-        else:
-            sub.failures += 1
-            if sub.failures >= 5:
-                sub.is_active = False
-            sub.save(update_fields=["failures", "is_active"])
-            log.warning("Web Push xatosi %s (obuna %s)", code, sub.id)
-        return False
-    except Exception as exc:
-        sub.failures += 1
-        sub.save(update_fields=["failures"])
-        log.warning("Web Push ulanish xatosi: %s", exc.__class__.__name__)
-        return False
+    code, err = None, None
+    # vaqtinchalik xatolar (tarmoq uzilishi, 429, 5xx) — qisqa kutib qayta urinamiz, xabar yo'qolmasin
+    for pause in RETRY_PAUSES:
+        if pause:
+            time.sleep(pause)
+        try:
+            webpush(
+                subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
+                data=data, vapid_private_key=settings.VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": settings.VAPID_SUBJECT}, ttl=24 * 3600, headers=headers, timeout=10,
+            )
+            sub.failures, sub.last_success = 0, timezone.now()
+            sub.save(update_fields=["failures", "last_success"])
+            return True
+        except WebPushException as exc:
+            code, err = getattr(exc.response, "status_code", None), None
+            if code in (404, 410):  # obuna bekor qilingan / muddati o'tgan
+                sub.delete()
+                return False
+            if not (code is None or code == 429 or code >= 500):
+                break  # 400/401/403/413 — qayta urinish foyda bermaydi
+        except Exception as exc:
+            code, err = None, exc.__class__.__name__
+    sub.failures += 1
+    if sub.failures >= 5:
+        sub.is_active = False
+    sub.save(update_fields=["failures", "is_active"])
+    log.warning("Web Push xatosi %s (obuna %s)", err or code, sub.id)
+    return False
 
 
 def process_pending(batch=100):
@@ -156,4 +163,7 @@ def start_worker():
 
 
 def wake_worker():
+    # server boshqa usulda ishga tushirilgan bo'lsa ham (gunicorn, runserver) — xabar navbatda qolib ketmasin
+    if not _started[0] and "test" not in sys.argv:
+        start_worker()
     _wake.set()
