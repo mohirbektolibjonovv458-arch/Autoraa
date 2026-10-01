@@ -4,6 +4,7 @@ import { disablePush, enablePush, pushState, PushState } from "../push";
 import { useToast } from "./ui";
 import { useAuth } from "../auth";
 import PushHelp from "./PushHelp";
+import PushDiag from "./PushDiag";
 
 const HIDE_KEY = "ah_push_prompt_hidden_at";
 
@@ -75,5 +76,5 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
   );
   if (variant === "row") return row;
   // yoqilgan bo'lsa: sinov xabari va telefon sozlamalari yo'riqnomasi (xabar faqat ilova ochiqligida kelsa)
-  return <div className="card col gap-12">{row}{st === "on" && <PushHelp />}</div>;
+  return <div className="card col gap-12">{row}{st === "on" && <PushHelp />}<PushDiag localOn={st === "on"} /></div>;
 }
