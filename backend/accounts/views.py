@@ -4,7 +4,6 @@ from core.params import str_in
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
