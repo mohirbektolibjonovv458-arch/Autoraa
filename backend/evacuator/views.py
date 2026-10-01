@@ -19,6 +19,45 @@ ACTIVE = ["searching", "accepted", "on_the_way", "arrived"]
 FLOW = {"accepted": "on_the_way", "on_the_way": "arrived", "arrived": "completed"}
 
 
+# SOS'ni hech kim qabul qilmasa — yaqin yordamchilarga qayta jiringlatamiz (soniya: shu vaqtdan keyin 1-, 2-, 3-takror)
+SOS_REPEAT_AFTER = (40, 90, 180)
+
+
+def alert_providers(sos, round_no=0):
+    """Yaqin (online) yordamchilarga SOS: push (yuqori ustuvorlik, ekranda yopilmaydi) + Telegram.
+    round_no > 0 — takroriy ogohlantirish (hali hech kim qabul qilmadi)."""
+    radius = SiteSettings.load().sos_radius_km
+    role = sos.provider_role
+    cycle = int(sos.updated_at.timestamp()) if round_no else 0  # rad etilib qayta qidirilsa — yangi tsikl
+    sent = 0
+    for p in User.objects.filter(role=role, is_active=True, is_online=True).exclude(pk=sos.user_id):
+        dist = haversine_km(sos.lat, sos.lng, p.lat, p.lng)
+        if dist is not None and dist > radius:
+            continue
+        dtxt = f"{dist:.1f} km" if dist is not None else "Yaqin atrofda"
+        title = f"🆘 SOS: {sos.get_kind_display()}" if not round_no else f"🆘 SOS hali kutyapti ({round_no}): {sos.get_kind_display()}"
+        if notify(p, title, f"{dtxt} uzoqlikda yordam kerak. {sos.address}".strip(), "sos",
+                  "/app/evak" if role == "evakuator" else "/app/usta/sos", telegram=True, urgent=True,
+                  dedup=f"sos-{sos.id}-new" if not round_no else f"sos-{sos.id}-r{round_no}-{cycle}",
+                  push_body=f"{dtxt} uzoqlikda yordam kerak. Qabul qilish uchun oching."):
+            sent += 1
+    return sent
+
+
+def escalate_sos(now=None):
+    """Fon jarayoni (har 15 soniyada): qabul qilinmagan SOS'lar uchun takroriy ogohlantirish."""
+    from datetime import timedelta
+    now = now or timezone.now()
+    n = 0
+    window = timedelta(seconds=SOS_REPEAT_AFTER[-1] + 60)
+    for sos in SOSRequest.objects.filter(status="searching", updated_at__gte=now - window):
+        age = (now - sos.updated_at).total_seconds()
+        due = sum(1 for t in SOS_REPEAT_AFTER if age >= t)
+        if due:
+            n += alert_providers(sos, due)  # dedup: har bir takror bir marta
+    return n
+
+
 def kinds_for(user):
     return ["evakuator"] if user.role == "evakuator" else ["tezkor_usta", "diagnostika"]
 
@@ -44,15 +83,7 @@ class SOSCreateView(APIView):
         vehicle = Vehicle.objects.filter(pk=d.get("vehicle"), owner=request.user).first() if d.get("vehicle") else None
         sos = SOSRequest.objects.create(user=request.user, kind=kind, lat=lat, lng=lng,
                                         address=(d.get("address") or "")[:200], note=(d.get("note") or "")[:500], vehicle=vehicle)
-        radius = SiteSettings.load().sos_radius_km
-        role = sos.provider_role
-        for p in User.objects.filter(role=role, is_active=True, is_online=True):
-            dist = haversine_km(lat, lng, p.lat, p.lng)
-            if dist is None or dist <= radius:
-                dtxt = f"{dist:.1f} km" if dist is not None else "Yaqin atrofda"
-                notify(p, f"🆘 SOS: {sos.get_kind_display()}", f"{dtxt} uzoqlikda yordam kerak. {sos.address}".strip(), "sos",
-                       "/app/evak" if role == "evakuator" else "/app/usta/sos", telegram=True, urgent=True, dedup=f"sos-{sos.id}-new",
-                       push_body=f"{dtxt} uzoqlikda yordam kerak. Qabul qilish uchun oching.")
+        alert_providers(sos)
         return Response(SOSSerializer(sos).data, status=201)
 
 

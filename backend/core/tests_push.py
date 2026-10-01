@@ -206,3 +206,44 @@ class PushTests(TestCase):
         k = next(k for k in self.sent if "Sinov" in json.loads(k["data"])["title"])
         self.assertEqual(k["headers"]["Urgency"], "high")
         self.assertEqual(APIClient().post("/api/push/test/").status_code, 401)
+
+    # --- chat: HAR bir xabar telefonga yetadi (oldin birinchisi o'qilmaguncha keyingilari jim qolardi)
+    def test_every_chat_message_notifies(self):
+        self.subscribe(self.u, "usta")
+        conv = Conversation.objects.create(user1=self.a, user2=self.u)
+        c = self.c(self.a)
+        for t in ("Salom", "Ertaga kelaman", "Javob bering"):
+            c.post(f"/api/chat/{conv.id}/messages/", {"text": t}, format="json")
+            process_pending()
+        chat = [k for k in self.sent if json.loads(k["data"])["kind"] == "chat"]
+        self.assertEqual(len(chat), 3)
+        p = [json.loads(k["data"]) for k in chat]
+        self.assertTrue(all(x["tag"] == f"chat-{conv.id}" and x["urgent"] for x in p))  # telefonda bitta, har safar jiringlaydi
+        self.assertTrue(all(k["headers"]["Urgency"] == "high" for k in chat))
+        self.assertIn("3 ta", p[-1]["body"])
+        self.assertNotIn("Javob", json.dumps(p, ensure_ascii=False))  # matn qulf ekraniga chiqmaydi
+        # ilova ichidagi ro'yxat to'lib ketmaydi: suhbat bo'yicha bitta o'qilmagan yozuv
+        self.assertEqual(self.u.notifications.filter(kind="chat", is_read=False).count(), 1)
+
+    # --- SOS: hech kim qabul qilmasa — takroriy ogohlantirish, qabul qilingach to'xtaydi
+    def test_sos_escalation(self):
+        from django.utils import timezone
+        from evacuator.models import SOSRequest
+        from evacuator.views import escalate_sos
+        ev = User.objects.create_user(phone="+998901000305", role="evakuator", first_name="Ev", is_online=True, lat=41.3, lng=69.2)
+        EvacuatorProfile.objects.create(user=ev); self.subscribe(ev, "evak")
+        sid = self.c(self.a).post("/api/sos/", {"kind": "evakuator", "lat": 41.31, "lng": 69.21}, format="json").data["id"]
+        sos = SOSRequest.objects.get(pk=sid)
+        t0 = sos.updated_at
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=10)), 0)
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=45)), 1)
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=50)), 0)   # bir takror — bir marta
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=100)), 1)  # 2-takror
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=200)), 1)  # 3-takror
+        self.assertEqual(escalate_sos(t0 + timedelta(seconds=230)), 0)  # 3 tadan ortiq emas
+        process_pending()
+        sos_p = [json.loads(k["data"]) for k in self.sent if json.loads(k["data"])["kind"] == "sos"]
+        self.assertEqual(len(sos_p), 4)
+        self.assertTrue(all(x["urgent"] for x in sos_p))
+        self.c(ev).post(f"/api/sos/{sid}/accept/", {}, format="json")
+        self.assertEqual(escalate_sos(timezone.now() + timedelta(seconds=100)), 0)  # qabul qilingan — jim

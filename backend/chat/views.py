@@ -125,9 +125,16 @@ class MessagesView(APIView):
         m = Message.objects.create(conversation=c, sender=request.user, text=text, image=image, lat=lat, lng=lng)
         c.save()
         other = c.other(request.user)
-        if not other.notifications.filter(kind="chat", is_read=False, link=f"/app/chat/{c.id}").exists():
-            notify(other, f"💬 {request.user.full_name}", text[:100] or "📎 Rasm yoki joylashuv", "chat", f"/app/chat/{c.id}", telegram=True,
-                   push_body="Sizga yangi xabar keldi", dedup=f"chat-{c.id}-{m.id}")
+        # HAR bir xabar haqida xabar beriladi (oldin: birinchi bildirishnoma o'qilmaguncha keyingilari jim qolardi).
+        # Ro'yxat to'lib ketmasligi uchun shu suhbatning o'qilmagan bildirishnomasi bittaga yig'iladi,
+        # telefonda esa bitta bildirishnoma yangilanib, har safar qayta jiringlaydi (tag + urgent).
+        link = f"/app/chat/{c.id}"
+        other.notifications.filter(kind="chat", is_read=False, link=link).delete()
+        unread = Message.objects.filter(conversation=c, sender=request.user, is_read=False).count()
+        preview = text[:100] or "📎 Rasm yoki joylashuv"
+        notify(other, f"💬 {request.user.full_name}", preview if unread <= 1 else f"{preview}\n({unread} ta yangi xabar)", "chat", link,
+               telegram=True, urgent=True, tag=f"chat-{c.id}",
+               push_body="Sizga yangi xabar keldi" if unread <= 1 else f"Sizga {unread} ta yangi xabar keldi")
         return Response(MessageSerializer(m, context={"request": request}).data, status=201)
 
 

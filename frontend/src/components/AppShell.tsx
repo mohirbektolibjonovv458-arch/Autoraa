@@ -96,6 +96,38 @@ function chime() {
   } catch { /* */ }
 }
 
+/** SOS signali: yordamchi «Ko'rish» yoki «Yopish» bosmaguncha (ko'pi bilan 1 daqiqa) qo'ng'iroqdek takrorlanadi. */
+function SosAlarm() {
+  const go = useNavigate();
+  const [item, setItem] = useState<any>(null);
+  useEffect(() => {
+    const on = (e: Event) => setItem((e as CustomEvent).detail);
+    window.addEventListener("avtora-sos-alarm", on);
+    return () => window.removeEventListener("avtora-sos-alarm", on);
+  }, []);
+  useEffect(() => {
+    if (!item) return;
+    let n = 0;
+    const ring = () => { chime(); setTimeout(chime, 380); (navigator as any).vibrate?.([600, 250, 600]); };
+    ring();
+    const id = setInterval(() => { if (++n >= 40) { clearInterval(id); return; } ring(); }, 1500);
+    return () => { clearInterval(id); (navigator as any).vibrate?.(0); };
+  }, [item?.id]);
+  if (!item) return null;
+  const close = () => setItem(null);
+  return (
+    <div className="modal-back sos-alarm" role="alertdialog" aria-label="SOS">
+      <div className="modal col gap-12" style={{ textAlign: "center" }}>
+        <div className="sos-big pulse" style={{ margin: "0 auto" }}>SOS</div>
+        <h3>{item.title}</h3>
+        {item.body && <p className="small">{item.body}</p>}
+        <button className="btn btn-red btn-lg btn-block" onClick={() => { const l = item.link; close(); if (l) go(l); }}>Ko'rish va qabul qilish</button>
+        <button className="btn btn-ghost btn-block" onClick={close}>Yopish</button>
+      </div>
+    </div>
+  );
+}
+
 export function useCounts() {
   const [c, setC] = useState({ notif: 0, chat: 0 });
   const toast = useToast();
@@ -109,14 +141,20 @@ export function useCounts() {
           const items: any[] = n.data.results || [];
           const maxId = items.reduce((m, x) => Math.max(m, x.id || 0), lastId.current || 0);
           if (lastId.current !== null) {
-            const fresh = items.filter((x) => x.id > (lastId.current as number) && (x.kind === "order" || x.kind === "sos"));
-            if (fresh.length) {
-              toast(`🔔 ${fresh[0].title}${fresh[0].body ? " — " + fresh[0].body : ""}`, "success");
+            const here = window.location.pathname;
+            const fresh = items.filter((x) => x.id > (lastId.current as number)
+              && (x.kind === "order" || x.kind === "sos" || (x.kind === "chat" && x.link !== here)));  // ochiq suhbat haqida emas
+            const sos = fresh.find((x) => x.kind === "sos" && x.title.startsWith("🆘"));
+            if (sos) {
+              // SOS — qo'ng'iroqdek takrorlanadigan signal va katta oyna (yordamchi ko'rmaguncha)
+              window.dispatchEvent(new CustomEvent("avtora-sos-alarm", { detail: sos }));
+            } else if (fresh.length) {
+              toast(`🔔 ${fresh[0].title}${fresh[0].body ? " — " + fresh[0].body.split("\n")[0] : ""}`, "success");
               // push ruxsati bo'lmasa tizim bildirishnomasi chiqmaydi — o'zimiz signal beramiz (ikki marta ovoz chiqmasin)
               const systemShown = "Notification" in window && Notification.permission === "granted";
               if (!systemShown) { chime(); (navigator as any).vibrate?.([200, 100, 200]); }
-              window.dispatchEvent(new Event("avtora-push"));
             }
+            if (fresh.length) window.dispatchEvent(new Event("avtora-push"));
           }
           lastId.current = maxId;
         })
@@ -183,6 +221,7 @@ export default function AppShell() {
   return (
     <div className="shell">
       <LocationSync />
+      {(user?.role === "usta" || user?.role === "evakuator") && <SosAlarm />}
       <aside className="side">
         <Link to="/" className="logo-link"><div className="logo"><Logo /></div></Link>
         <nav>

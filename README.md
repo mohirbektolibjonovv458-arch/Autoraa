@@ -286,6 +286,9 @@ Ilova yopiq bo'lsa ham telefon yoki kompyuterning bildirishnoma paneliga xabar k
 - Push xizmati vaqtincha javob bermasa (tarmoq, 429, 5xx) — xabar 3 marta qayta yuboriladi.
 - Brauzer obunani o'zi yangilasa — service worker yangi obunani serverga o'zi yozadi, ilovani ochish shart emas.
 - Ilova ochiq turganda yangi bron/SOS kelsa — ekranda xabar va ovozli signal (push yoqilmagan bo'lsa ham).
+- **Chat:** har bir xabar haqida xabar keladi (telefonda suhbat bo'yicha bitta bildirishnoma, har safar qayta jiringlaydi; matn qulf ekraniga chiqmaydi).
+- **SOS:** yaqin evakuator/ustalarga yuqori ustuvorlik va uzun tebranish bilan; hech kim qabul qilmasa 40 s, 90 s va 3 daqiqada qayta jiringlaydi. Ilova ochiq bo'lsa — qo'ng'iroqdek takrorlanuvchi signal va katta oyna.
+- **Sinov:** Profil → «Sinov xabarini yuborish» → ilovadan chiqing — 10 soniyada xabar kelishi kerak.
 - Ustada bildirishnomalar yoqilmagan bo'lsa — eslatma banneri har kuni chiqadi. Telegram'ga ulangan bo'lsa, bron xabari Telegram'ga ham boradi.
 
 ---
