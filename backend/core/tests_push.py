@@ -247,3 +247,13 @@ class PushTests(TestCase):
         self.assertTrue(all(x["urgent"] for x in sos_p))
         self.c(ev).post(f"/api/sos/{sid}/accept/", {}, format="json")
         self.assertEqual(escalate_sos(timezone.now() + timedelta(seconds=100)), 0)  # qabul qilingan — jim
+
+    def test_status_diagnostics(self):
+        self.assertEqual(self.c(self.u).get("/api/push/status/").data["devices"], 0)
+        notify(self.u, "Yo'q qurilma")
+        self.subscribe(self.u, "usta-secret")
+        notify(self.u, "Bor qurilma"); process_pending()
+        d = self.c(self.u).get("/api/push/status/").data
+        self.assertEqual(d["devices"], 1); self.assertIsNotNone(d["last_success"])
+        self.assertEqual([r["push"] for r in d["recent"]], ["sent", "none"])
+        self.assertNotIn("usta-secret", json.dumps(d, default=str))

@@ -60,7 +60,16 @@ class PushStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({"enabled": enabled(), "devices": request.user.push_subs.filter(is_active=True).count()})
+        """Diagnostika: xabar qayerda to'xtayotganini foydalanuvchining o'zi ko'radi (endpoint/kalitlar qaytarilmaydi)."""
+        u = request.user
+        subs = list(u.push_subs.all())
+        active = [x for x in subs if x.is_active]
+        last_ok = max((x.last_success for x in subs if x.last_success), default=None)
+        recent = [{"title": n.title, "kind": n.kind, "push": n.push_state, "at": n.created_at}
+                  for n in u.notifications.exclude(push_state="off").order_by("-id")[:6]]
+        return Response({"enabled": enabled(), "devices": len(active), "broken_devices": len(subs) - len(active),
+                         "failures": sum(x.failures for x in active), "last_success": last_ok,
+                         "telegram": bool(u.telegram_chat_id), "recent": recent})
 
 
 class PushResubscribeView(APIView):
