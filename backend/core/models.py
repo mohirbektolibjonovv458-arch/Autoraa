@@ -74,16 +74,18 @@ class BlogPost(models.Model):
         ordering = ["-created_at"]
 
 
-def notify(user, title, body="", kind="system", link="", telegram=False, push=True, push_body=None, dedup=None, urgent=False):
+def notify(user, title, body="", kind="system", link="", telegram=False, push=True, push_body=None, dedup=None, urgent=False, tag=None):
     """Bitta joydan: ilova ichidagi bildirishnoma + telefon/brauzerga Web Push (+ ixtiyoriy Telegram).
-    dedup — bir xil hodisa qisqa vaqtda qayta kelsa, takroriy bildirishnoma yaratilmaydi."""
+    dedup — bir xil hodisa qisqa vaqtda qayta kelsa, takroriy bildirishnoma yaratilmaydi.
+    tag — dedup'siz guruhlash (masalan, bitta suhbat): telefonda oldingi bildirishnoma yangisi bilan almashtiriladi
+    va qayta jiringlaydi; push xizmati ham yetkazilmagan eskisini tashlab, faqat oxirgisini yuboradi."""
     from datetime import timedelta
     from django.utils import timezone
     if dedup and Notification.objects.filter(user=user, dedup_key=dedup[:80], created_at__gte=timezone.now() - timedelta(minutes=10)).exists():
         return None
     has_device = push and user.push_subs.filter(is_active=True).exists()
     n = Notification.objects.create(user=user, title=title[:150], body=body[:1000], kind=kind, link=link[:200],
-                                    dedup_key=(dedup or "")[:80], urgent=urgent,
+                                    dedup_key=(dedup or tag or "")[:80], urgent=urgent,
                                     push_body=(body if push_body is None else push_body)[:200],
                                     push_state="pending" if has_device else ("none" if push else "off"))
     if has_device:

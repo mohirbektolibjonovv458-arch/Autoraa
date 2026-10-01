@@ -132,6 +132,19 @@ class Command(BaseCommand):
                     connection.close()
                 time.sleep(30 * 60)
         threading.Thread(target=reminders_loop, daemon=True, name="reminders").start()
+
+        def sos_escalation_loop():
+            # SOS'ni hech kim qabul qilmasa — yaqin evakuator/ustalarga qayta jiringlatish (40 s, 90 s, 3 daqiqa)
+            from evacuator.views import escalate_sos
+            while True:
+                time.sleep(15)
+                try:
+                    escalate_sos()
+                except Exception as exc:
+                    self.warn(f"SOS takroriy ogohlantirish xatosi: {exc}")
+                finally:
+                    connection.close()
+        threading.Thread(target=sos_escalation_loop, daemon=True, name="sos-escalation").start()
         self.ok("✅ Avtomatik eslatmalar va kunlik zaxira nusxa yoqildi (backend/backups/)")
 
         # Web Push: kalitlar (bo'lmasa yaratiladi) va fon yuboruvchi

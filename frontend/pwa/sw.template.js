@@ -103,14 +103,18 @@ self.addEventListener("push", (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { title: "Avtora", body: event.data ? event.data.text() : "" }; }
   const title = d.title || "Avtora";
+  const sos = d.kind === "sos";
   const options = {
     body: d.body || "",
     icon: "/icons/icon-192.png",
     badge: "/icons/badge-96.png",
-    tag: d.tag || undefined,          // bir xil hodisa qurilmada takrorlanmaydi, yangisi bilan almashtiriladi
-    renotify: !!d.urgent,
-    requireInteraction: !!d.urgent,   // SOS — foydalanuvchi ko'rmaguncha yopilmaydi
-    vibrate: d.urgent ? [200, 100, 200, 100, 300] : [120],
+    tag: d.tag || undefined,          // bir xil hodisa (bitta suhbat) qurilmada bitta bildirishnoma bo'lib yangilanadi
+    renotify: !!d.urgent,             // yangilanganda ham qayta jiringlaydi/tebranadi
+    // SOS va bron — foydalanuvchi ko'rmaguncha ekrandan yo'qolmaydi; chat — oddiy
+    requireInteraction: !!d.urgent && d.kind !== "chat",
+    silent: false,
+    // SOS — telefon qo'ng'irog'iga o'xshash uzun tebranish
+    vibrate: sos ? [600, 250, 600, 250, 600, 250, 1200] : d.urgent ? [200, 100, 200, 100, 300] : [120],
     timestamp: Date.now(),
     data: { url: d.url || "/app/notifications", id: d.id },
   };
