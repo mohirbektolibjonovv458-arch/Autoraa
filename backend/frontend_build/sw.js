@@ -8,10 +8,12 @@
  *  - /api/*, /media/*, xarita plitalari va boshqa domenlar: HECH QACHON keshlanmaydi —
  *    eskirgan ma'lumot (buyurtma, SOS, narx, chat) ko'rsatilmaydi.
  */
-const VERSION = "46a298c906a8";
+const VERSION = "c4a831260c79";
 const PRECACHE = `avtora-precache-${VERSION}`;
 const RUNTIME = `avtora-runtime-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const META = "avtora-meta";            // versiyadan mustaqil: push obuna manzili (pushsubscriptionchange uchun)
+const PUSH_EP_KEY = "/__avtora/push-endpoint";
 const PRECACHE_URLS = [
   "/index.html",
   "/offline.html",
@@ -23,66 +25,66 @@ const PRECACHE_URLS = [
   "/brand/avtora-logo.png",
   "/brand/mark-light.png",
   "/brand/mark-dark.png",
-  "/assets/AdminLogin-Dlr587jA.js",
-  "/assets/AdminShell-gVgO_k0y.js",
-  "/assets/Analytics-BhB8-B75.js",
-  "/assets/Blog-CgwWBXtU.js",
-  "/assets/Blog-DCF9xkTM.js",
-  "/assets/Cars-Cmcuu6dz.js",
-  "/assets/Chats-SZR9ekjS.js",
-  "/assets/Dashboard-3GfyN3Ri.js",
-  "/assets/EvakHome-CxbTWBEb.js",
-  "/assets/Favorites-DA9k2Bvk.js",
-  "/assets/Fuel-DrazACDu.js",
-  "/assets/FuelPage-DzPZIfDZ.js",
-  "/assets/FuelPublic-CbVTNeH4.js",
-  "/assets/ImagePicker-Bt3k1uU3.js",
-  "/assets/LiveMap--8Yy3jau.js",
-  "/assets/MapPage-CdlMntBZ.js",
-  "/assets/MasterDetail-DKLl2gIh.js",
-  "/assets/Masters-Bg3h6MpU.js",
-  "/assets/Masters-CwrQCayA.js",
-  "/assets/MastersTabs-BeT7_0lD.js",
-  "/assets/Notifications-DHCP59H_.js",
-  "/assets/Orders-D1OUnovy.js",
-  "/assets/Orders-pTjXMd9b.js",
-  "/assets/Parts-BxVYwvte.js",
-  "/assets/Payments-CmtjyNI9.js",
-  "/assets/ProductDetail-BbYgzd8q.js",
-  "/assets/Profile-Z9pdFjal.js",
-  "/assets/ProviderJobs-CPmKku8G.js",
-  "/assets/Register-DzqyJv3F.js",
-  "/assets/RescheduleModal-Dj4ucnzm.js",
-  "/assets/Safar-ChNpslNN.js",
-  "/assets/Search-CfAzmyMP.js",
-  "/assets/Settings-DAkwMR0u.js",
-  "/assets/ShopPage-Bc_1zqiX.js",
-  "/assets/Shops-BLlV8rnX.js",
-  "/assets/SlotPicker-Bo8rVy3D.js",
-  "/assets/Sos-bNl8wn7W.js",
-  "/assets/Terms-BCMjqzBv.js",
-  "/assets/Users-BgWUW7Ux.js",
-  "/assets/UstaHome-DxNBbjfs.js",
-  "/assets/UstaOrders-C_fMsHXO.js",
-  "/assets/UstaPremium-xkSZW0-p.js",
-  "/assets/UstaServices-DWE-Ha4j.js",
-  "/assets/UstaShop-Dlu6sPNB.js",
-  "/assets/UstaSos-CqvPGBOs.js",
-  "/assets/arrow-left-BCDWrPtL.js",
-  "/assets/camera-CwaSqwBn.js",
-  "/assets/cart-Bk0mM-cK.js",
-  "/assets/circle-check-CV_vq1pR.js",
-  "/assets/circle-dot-CFM2F4o-.js",
-  "/assets/credit-card-BWzNYMRu.js",
-  "/assets/generateCategoricalChart-BcLWuYnR.js",
-  "/assets/heart-BYlFw7O4.js",
-  "/assets/image-plus-CxKz6jd6.js",
+  "/assets/AdminLogin-D9q7Wj7B.js",
+  "/assets/AdminShell-BzqRxOUW.js",
+  "/assets/Analytics-DX4EuNFJ.js",
+  "/assets/Blog-CpckWZBv.js",
+  "/assets/Blog-DGDA-xls.js",
+  "/assets/Cars-BGVV9DwC.js",
+  "/assets/Chats-CgsyREcY.js",
+  "/assets/Dashboard-BOAYS8Ak.js",
+  "/assets/EvakHome-B7OxB1lL.js",
+  "/assets/Favorites-BjoRkzPc.js",
+  "/assets/Fuel-Ho2O2tVl.js",
+  "/assets/FuelPage-CejXXtZM.js",
+  "/assets/FuelPublic-CZMQOEpI.js",
+  "/assets/ImagePicker-2kGXCOdB.js",
+  "/assets/LiveMap-Bn2VOPZz.js",
+  "/assets/MapPage-Ddg28e1i.js",
+  "/assets/MasterDetail--JrrjqG0.js",
+  "/assets/Masters-C77qgBxu.js",
+  "/assets/Masters-CYv5h3Yk.js",
+  "/assets/MastersTabs-Cb3xmhKU.js",
+  "/assets/Notifications-BXixEGoO.js",
+  "/assets/Orders-DBMh7-s9.js",
+  "/assets/Orders-eU258pYp.js",
+  "/assets/Parts-BMPJO_PX.js",
+  "/assets/Payments-TjSvogwl.js",
+  "/assets/ProductDetail-CfbUI2ks.js",
+  "/assets/Profile-BHz-VZWa.js",
+  "/assets/ProviderJobs-D5E6kPV0.js",
+  "/assets/Register-CxGJJhZE.js",
+  "/assets/RescheduleModal-B24kmDoK.js",
+  "/assets/Safar-CdqVBbNR.js",
+  "/assets/Search-BfW5J6Si.js",
+  "/assets/Settings-CGrqmzEv.js",
+  "/assets/ShopPage-CRLEuiMF.js",
+  "/assets/Shops-Bpe8F_te.js",
+  "/assets/SlotPicker-Cbyq6-zF.js",
+  "/assets/Sos-Drgw4B50.js",
+  "/assets/Terms-i1dj5_wb.js",
+  "/assets/Users-BTm5TNN-.js",
+  "/assets/UstaHome-F_zr2YPt.js",
+  "/assets/UstaOrders-C0ax6Ut6.js",
+  "/assets/UstaPremium-UI2ez6fb.js",
+  "/assets/UstaServices-CetE28zA.js",
+  "/assets/UstaShop-D5Jew0zy.js",
+  "/assets/UstaSos-uYzYsYH4.js",
+  "/assets/arrow-left-Bm5cNS5L.js",
+  "/assets/camera-BiJHcJXD.js",
+  "/assets/cart-BBRfoSl8.js",
+  "/assets/circle-check-DwXAu-_w.js",
+  "/assets/circle-dot-icA9G63d.js",
+  "/assets/credit-card-aSwYCBuK.js",
+  "/assets/generateCategoricalChart-CxfJVdph.js",
+  "/assets/heart-DnuBfe_t.js",
+  "/assets/image-plus-DGfJ7bUq.js",
+  "/assets/index-BQptWMbr.js",
   "/assets/index-CVDE4jcK.css",
-  "/assets/index-DyQBaxpA.js",
-  "/assets/pencil-r2drHSSc.js",
-  "/assets/share-2-CtEhb-Ye.js",
-  "/assets/shield-check-BO1J7o0V.js",
-  "/assets/trash-2-C0S2zSPp.js"
+  "/assets/pencil-NOes01UW.js",
+  "/assets/share-2-BUQBNdzN.js",
+  "/assets/shield-check-dT3q2-LW.js",
+  "/assets/trash-2-CERqlYdG.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -96,7 +98,7 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    const keep = new Set([PRECACHE, RUNTIME]);
+    const keep = new Set([PRECACHE, RUNTIME, META]);
     for (const k of await caches.keys()) if (!keep.has(k)) await caches.delete(k);
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable();
     await self.clients.claim();
@@ -208,5 +210,33 @@ self.addEventListener("notificationclick", (event) => {
       }
     }
     await self.clients.openWindow(url);
+  })());
+});
+
+/* Brauzer push obunasini o'zi yangilasa (muddati tugashi, kalit almashishi) — ilova ochilmasa ham
+ * yangi obuna serverga yoziladi. Aks holda usta keyingi safar ilovani ochguncha bron xabarlarini olmay qoladi. */
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil((async () => {
+    try {
+      const meta = await caches.open(META);
+      const saved = await meta.match(PUSH_EP_KEY);
+      const old = (event.oldSubscription && event.oldSubscription.endpoint) || (saved ? await saved.text() : "");
+      if (!old) return;
+      let sub = event.newSubscription;
+      if (!sub) {
+        const k = await (await fetch("/api/push/key/", { credentials: "omit" })).json();
+        if (!k.enabled || !k.public_key) return;
+        const pad = "=".repeat((4 - (k.public_key.length % 4)) % 4);
+        const raw = atob((k.public_key + pad).replace(/-/g, "+").replace(/_/g, "/"));
+        const appKey = Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+        sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
+      }
+      const j = sub.toJSON();
+      const res = await fetch("/api/push/resubscribe/", {
+        method: "POST", credentials: "omit", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_endpoint: old, endpoint: j.endpoint, keys: j.keys }),
+      });
+      if (res.ok) await meta.put(PUSH_EP_KEY, new Response(j.endpoint));
+    } catch (e) { /* keyingi safar ilova ochilganda syncPush() tuzatadi */ }
   })());
 });

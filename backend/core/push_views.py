@@ -61,3 +61,34 @@ class PushStatusView(APIView):
 
     def get(self, request):
         return Response({"enabled": enabled(), "devices": request.user.push_subs.filter(is_active=True).count()})
+
+
+class PushResubscribeView(APIView):
+    """Brauzer obunani o'zi almashtirganda (service worker «pushsubscriptionchange»).
+    Service worker'da login tokeni yo'q, shuning uchun egasi ESKI endpoint orqali aniqlanadi —
+    u faqat shu qurilmaga ma'lum bo'lgan tasodifiy manzil. Obuna o'sha foydalanuvchida qoladi,
+    ilova ochilmasa ham usta yangi bron haqidagi xabarni olishda davom etadi."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        if not enabled():
+            return Response({"detail": "Push bildirishnomalar serverda sozlanmagan."}, status=503)
+        d = request.data
+        old = str(d.get("old_endpoint") or "")[:700]
+        endpoint = str(d.get("endpoint") or "")[:700]
+        keys = d.get("keys") if isinstance(d.get("keys"), dict) else {}
+        p256dh, auth = str(keys.get("p256dh") or "")[:200], str(keys.get("auth") or "")[:100]
+        if not old or not endpoint_allowed(endpoint) or not p256dh or not auth:
+            return Response({"detail": "Obuna ma'lumotlari noto'g'ri."}, status=400)
+        prev = PushSubscription.objects.filter(endpoint=old).select_related("user").first()
+        if not prev or not prev.user.is_active:
+            return Response({"detail": "Eski obuna topilmadi."}, status=404)
+        user = prev.user
+        if old != endpoint:
+            prev.delete()
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={"user": user, "p256dh": p256dh, "auth": auth, "is_active": True, "failures": 0,
+                      "user_agent": request.META.get("HTTP_USER_AGENT", "")[:200]})
+        return Response({"ok": True})
