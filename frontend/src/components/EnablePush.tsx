@@ -3,6 +3,7 @@ import { BellOff, BellRing, Share } from "lucide-react";
 import { disablePush, enablePush, pushState, PushState } from "../push";
 import { useToast } from "./ui";
 import { useAuth } from "../auth";
+import PushHelp from "./PushHelp";
 
 const HIDE_KEY = "ah_push_prompt_hidden_at";
 
@@ -64,12 +65,15 @@ export default function EnablePush({ variant = "card" }: { variant?: "card" | "b
       </div>
     );
   }
-  return (
-    <div className={variant === "row" ? "list-row" : "card row gap-12"} style={variant === "row" ? { alignItems: "center" } : undefined}>
+  const row = (
+    <div className={variant === "row" ? "list-row" : "row gap-12"} style={variant === "row" ? { alignItems: "center" } : undefined}>
       <span className="ico" style={{ color: st === "on" ? "var(--green)" : "var(--muted)" }}>{st === "on" ? <BellRing size={18} /> : st === "ios-install" ? <Share size={18} /> : <BellOff size={18} />}</span>
       <div className="grow"><b className="small">Push bildirishnomalar</b><div className="xs muted">{text[st]}</div></div>
       {st === "off" && <button className="btn btn-sm" disabled={busy} onClick={on}>{busy ? "…" : "Yoqish"}</button>}
       {st === "on" && <button className="btn btn-sm btn-ghost" onClick={off}>O'chirish</button>}
     </div>
   );
+  if (variant === "row") return row;
+  // yoqilgan bo'lsa: sinov xabari va telefon sozlamalari yo'riqnomasi (xabar faqat ilova ochiqligida kelsa)
+  return <div className="card col gap-12">{row}{st === "on" && <PushHelp />}</div>;
 }

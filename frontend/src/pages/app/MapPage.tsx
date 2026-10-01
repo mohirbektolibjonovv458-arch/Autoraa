@@ -37,7 +37,7 @@ export default function MapPage() {
       </div>
       {geo.error && <p className="xs muted">📍 {geo.error}</p>}
       {provider && sos.length > 0 && <div className="alert error">Yaqin atrofda {sos.length} ta SOS so'rov bor (qizil belgilar).</div>}
-      <MapView center={[geo.lat, geo.lng]} me={[geo.lat, geo.lng]} pins={pins} zoom={12} className="map-box" />
+      <MapView center={[geo.lat, geo.lng]} me={geo.real ? [geo.lat, geo.lng] : null} accuracy={geo.accuracy} onLocate={geo.set} pins={pins} zoom={12} className="map-box" />
       {sel && (
         <div className="card row gap-12">
           <Avatar name={sel.name} src={sel.user.avatar} size="lg" />

@@ -191,3 +191,18 @@ class PushTests(TestCase):
         self.assertEqual(anon.post("/api/push/resubscribe/", {**body, "old_endpoint": FCM + "guess"}, format="json").status_code, 404)
         bad = {**body, "old_endpoint": FCM + "new", "endpoint": "https://evil.com/x"}
         self.assertEqual(anon.post("/api/push/resubscribe/", bad, format="json").status_code, 400)
+
+    # --- «Sinov xabari»: ilovadan chiqib, telefon sozlamalarini tekshirish uchun
+    def test_push_test_endpoint(self):
+        c = self.c(self.u)
+        self.assertEqual(c.post("/api/push/test/").status_code, 409)  # qurilma yo'q
+        self.subscribe(self.u, "usta")
+        with patch("threading.Timer") as timer:
+            r = c.post("/api/push/test/")
+            self.assertEqual(r.status_code, 200); self.assertEqual(r.data["devices"], 1)
+            self.assertEqual(c.post("/api/push/test/").status_code, 429)  # spamdan himoya
+            timer.call_args[0][1]()  # kechiktirilgan yuborishni darhol bajaramiz
+        process_pending()
+        k = next(k for k in self.sent if "Sinov" in json.loads(k["data"])["title"])
+        self.assertEqual(k["headers"]["Urgency"], "high")
+        self.assertEqual(APIClient().post("/api/push/test/").status_code, 401)
