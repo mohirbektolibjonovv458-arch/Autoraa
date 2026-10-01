@@ -82,4 +82,7 @@ class ReceiptView(APIView):
         p = PremiumPayment.objects.filter(pk=pk).first()
         if not p or not p.receipt:
             raise Http404
-        return FileResponse(p.receipt.open("rb"))
+        try:
+            return FileResponse(p.receipt.open("rb"))
+        except FileNotFoundError:
+            raise Http404  # fayl diskda yo'q — 500 emas

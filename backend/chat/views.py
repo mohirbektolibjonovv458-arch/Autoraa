@@ -153,7 +153,12 @@ class ChatFileView(APIView):
         m = Message.objects.filter(pk=pk).first()
         if not m or not m.image:
             raise Http404
-        resp = FileResponse(m.image.open("rb"))
+        try:
+            fh = m.image.open("rb")
+        except FileNotFoundError:
+            # fayl diskda yo'q (masalan, Railway'da Volume ulanmagan va deploy'da o'chib ketgan) — 500 emas, 404
+            raise Http404
+        resp = FileResponse(fh)
         resp["Cache-Control"] = "private, max-age=3600"
         resp["X-Content-Type-Options"] = "nosniff"
         return resp

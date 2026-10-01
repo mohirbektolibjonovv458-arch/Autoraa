@@ -241,6 +241,10 @@ class FileSecurityTests(SecurityBase):
         url = self.as_(self.a).get(f"/api/chat/{self.conv.id}/messages/").data["messages"][-1]["image"]
         self.assertEqual(APIClient().get(url).status_code, 200)
         self.assertEqual(c.get(f"/api/premium/receipt/{self.pay.id}/").status_code, 404)
+        # fayl diskdan yo'qolgan bo'lsa (Volume ulanmagan) — server xatosi emas, 404
+        import os
+        os.remove(m.image.path)
+        self.assertEqual(APIClient(raise_request_exception=False).get(url).status_code, 404)
 
     def test_upload_rejects_non_images_and_strips_gps(self):
         c = self.as_(self.a)
