@@ -236,7 +236,6 @@ class BookingStatusView(APIView):
         old = b.status
         b.status = new
         b.save(update_fields=["status"])
-        label = b.get_status_display()
         if is_master:
             master_name = b.master.title or b.master.user.full_name
             titles = {"confirmed": "✅ Bron tasdiqlandi", "in_progress": "🔧 Usta ishni boshladi", "completed": "🏁 Xizmat yakunlandi — baho bering",

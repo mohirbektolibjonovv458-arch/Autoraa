@@ -12,6 +12,7 @@ urlpatterns = [
     path("push/unsubscribe/", push_views.PushUnsubscribeView.as_view()),
     path("push/resubscribe/", push_views.PushResubscribeView.as_view()),
     path("push/status/", push_views.PushStatusView.as_view()),
+    path("push/test/", push_views.PushTestView.as_view()),
     path("notifications/", views.NotificationListView.as_view()),
     path("notifications/read/", views.NotificationReadView.as_view()),
     path("notifications/<int:pk>/read/", views.NotificationReadView.as_view()),

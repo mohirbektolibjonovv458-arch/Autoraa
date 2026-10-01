@@ -12,7 +12,7 @@ from accounts.models import User
 from accounts.permissions import IsAdmin
 from accounts.serializers import UserSerializer
 from evacuator.models import SOSRequest
-from market.models import PartOrder, Product, Shop
+from market.models import PartOrder, Shop
 from market.serializers import ShopSerializer
 from masters.models import Booking, MasterProfile
 from masters.serializers import MasterSerializer

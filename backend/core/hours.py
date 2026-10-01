@@ -5,7 +5,6 @@ Qo'llanadigan yozuvlar (OpenStreetMap opening_hours va ustalar kiritadigan oddiy
   "Mo-Sa 08:00-12:00,13:00-18:00" · tungi oraliq "20:00-06:00"
 Tushunib bo'lmaydigan yozuv uchun None qaytadi (ya'ni «noma'lum» — hech qachon «yopiq» deb taxmin qilinmaydi)."""
 import re
-from datetime import datetime
 
 from django.utils import timezone
 

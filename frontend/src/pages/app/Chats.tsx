@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { geoErrorText, getPreciseLocation } from "../../geo";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ImagePlus, MapPin, Send } from "lucide-react";
 import { api, errMsg, media } from "../../api";
@@ -56,11 +57,9 @@ function Room({ id }: { id: string }) {
   const sendLoc = () => {
     if (!navigator.geolocation) { toast("Qurilmangiz joylashuvni aniqlay olmaydi", "error"); return; }
     toast("Joylashuv aniqlanmoqda…");
-    navigator.geolocation.getCurrentPosition(
-      (p) => post({ lat: p.coords.latitude, lng: p.coords.longitude, text: "📍 Mening manzilim" }),
-      (e) => toast(e.code === 1 ? "Joylashuvga ruxsat berilmagan (brauzer sozlamalari)" : "Joylashuvni aniqlab bo'lmadi, qayta urinib ko'ring", "error"),
-      { timeout: 15000, maximumAge: 60000, enableHighAccuracy: true },
-    );
+    getPreciseLocation({ desired: 25, maxWait: 12000 })
+      .then((f) => post({ lat: f.lat, lng: f.lng, text: "📍 Mening manzilim" }))
+      .catch((e) => toast(geoErrorText(e), "error"));
   };
 
   return (

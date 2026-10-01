@@ -60,46 +60,6 @@ class RouteThrottleUser(UserRateThrottle):
 
 
 class RouteError(Exception):
-    def __init__(self, status, detail):
-        super().__init__(detail)
-        self.status, self.detail = status, detail
-
-
-def compute_route(a, b):
-    """A → B marshrut (a, b = (lat, lng)). Natija 10 daqiqa keshlanadi. Xatoda RouteError."""
-    key = "route:" + hashlib.sha1(f"{a[0]:.4f},{a[1]:.4f}>{b[0]:.4f},{b[1]:.4f}".encode()).hexdigest()
-    hit = cache.get(key)
-    if hit:
-        return hit
-    coords = f"{a[1]:.6f},{a[0]:.6f};{b[1]:.6f},{b[0]:.6f}"
-    url = settings.ROUTING_URL.format(profile="driving", coords=coords, key=settings.ROUTING_KEY)
-    try:
-        r = requests.get(url, timeout=10, headers={"User-Agent": f"Avtora/1.0 (+{settings.SITE_URL or 'https://avtora.uz'})"})
-        data = r.json()
-    except Exception as exc:
-        log.warning("Marshrut xizmati javob bermadi: %s", exc.__class__.__name__)
-        raise RouteError(503, "Marshrut xizmati hozir javob bermayapti. Tashqi navigatorni oching.")
-    if not r.ok or data.get("code") != "Ok" or not data.get("routes"):
-        raise RouteError(404, "Bu nuqtalar orasida yo'l topilmadi.")
-    route = data["routes"][0]
-    line = route.get("geometry", {}).get("coordinates") or []
-    step = max(1, len(line) // 600)  # frontendga ortiqcha nuqta yubormaymiz
-    pts = [[round(p[1], 6), round(p[0], 6)] for p in line[::step]]
-    if line and pts[-1] != [round(line[-1][1], 6), round(line[-1][0], 6)]:
-        pts.append([round(line[-1][1], 6), round(line[-1][0], 6)])
-    steps = []
-    for leg in route.get("legs", []):
-        for st in leg.get("steps", []):
-            if st.get("distance", 0) < 5 and st.get("maneuver", {}).get("type") not in ("depart", "arrive"):
-                continue
-            steps.append({"text": _step_text(st), "distance_m": round(st.get("distance", 0))})
-    out = {"distance_km": round(route.get("distance", 0) / 1000, 1), "duration_min": max(1, round(route.get("duration", 0) / 60)),
-           "points": pts, "steps": steps[:40], "provider": settings.ROUTING_ATTRIBUTION}
-    cache.set(key, out, 600)
-    return out
-
-
-class RouteError(Exception):
     def __init__(self, msg, status=503):
         super().__init__(msg); self.status = status
 

@@ -9,8 +9,8 @@ from evacuator.models import SOSRequest
 from market.models import PartOrder, Product
 from masters.models import Booking
 
-from .models import BlogPost, Notification, SiteSettings
-from .serializers import BlogPostSerializer, NotificationSerializer, SiteSettingsSerializer
+from .models import BlogPost, SiteSettings
+from .serializers import BlogPostSerializer, NotificationSerializer
 
 
 class PublicSettingsView(APIView):

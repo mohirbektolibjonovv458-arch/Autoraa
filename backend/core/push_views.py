@@ -92,3 +92,34 @@ class PushResubscribeView(APIView):
             defaults={"user": user, "p256dh": p256dh, "auth": auth, "is_active": True, "failures": 0,
                       "user_agent": request.META.get("HTTP_USER_AGENT", "")[:200]})
         return Response({"ok": True})
+
+
+class PushTestView(APIView):
+    """«Sinov xabari»: foydalanuvchi tugmani bosadi, ilovadan chiqadi (masalan, Instagram'ga o'tadi) —
+    bir necha soniyadan keyin telefoniga xabar kelishi kerak. Kelmasa — muammo telefon sozlamalarida
+    (batareya tejash, avtoishga tushirish), server yoki ilovada emas."""
+    DELAY = 10
+
+    def post(self, request):
+        from django.core.cache import cache
+        if not enabled():
+            return Response({"detail": "Push bildirishnomalar serverda sozlanmagan."}, status=503)
+        devices = request.user.push_subs.filter(is_active=True).count()
+        if not devices:
+            return Response({"detail": "Bu hisobda bildirishnoma yoqilgan qurilma yo'q. Avval «Yoqish» tugmasini bosing."}, status=409)
+        if not cache.add(f"push-test:{request.user.id}", 1, 30):
+            return Response({"detail": "Sinov xabari yaqinda yuborildi. 30 soniyadan keyin qayta urinib ko'ring."}, status=429)
+        import threading
+        from django.db import close_old_connections
+        from .models import notify
+        user = request.user
+
+        def later():
+            try:
+                close_old_connections()
+                notify(user, "🔔 Sinov xabari", "Bildirishnomalar ishlayapti! Mijoz bron qilsa, xuddi shunday xabar keladi.",
+                       "system", "/app/notifications", urgent=True)
+            finally:
+                close_old_connections()
+        threading.Timer(self.DELAY, later).start()
+        return Response({"ok": True, "devices": devices, "delay": self.DELAY})

@@ -9,12 +9,11 @@ from core.geo import Polyline
 from core.params import float_param, int_param, str_in
 from core.routing import RouteError, fetch_route
 from fuel.models import FuelStation
-from fuel.services import build_status
 from garage.models import Vehicle
 from masters.models import MasterProfile
 
 from .assistant import progress_messages, save_messages, start_messages
-from .models import Trip, TripNotification, TripSettings
+from .models import Trip, TripSettings
 
 UZ = (36.5, 55.0, 46.5, 74.0)
 SKIP = "(o'tkazib yuborildi)"

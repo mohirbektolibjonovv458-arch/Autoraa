@@ -198,7 +198,7 @@ class SOSReviewView(APIView):
 
     def post(self, request, pk):
         from django.db.models import Avg, Count
-        from masters.models import MasterProfile, Review
+        from masters.models import Review
         sos = get_object_or_404(SOSRequest, pk=pk, user=request.user)
         if sos.status != "completed" or not sos.assignee:
             return Response({"detail": "Faqat yakunlangan xizmatga baho qo'yiladi."}, status=400)

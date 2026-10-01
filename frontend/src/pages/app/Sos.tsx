@@ -5,7 +5,8 @@ import { api, errMsg } from "../../api";
 import MapView from "../../components/MapView";
 import { useSite } from "../../site";
 import { Spinner, useToast } from "../../components/ui";
-import { money, useGeo, usePoll } from "../../utils";
+import { money, TASHKENT, useGeo, usePoll } from "../../utils";
+import { accText, geoErrorText, getPreciseLocation } from "../../geo";
 
 const KINDS = [
   { k: "evakuator", t: "Evakuator", s: "Avtomobilingizni olib ketish", icon: Truck },
@@ -39,11 +40,29 @@ function CreateSos({ initialKind, onCreated }: { initialKind: string; onCreated:
   const [cars, setCars] = useState<any[]>([]);
   const [vehicle, setVehicle] = useState("");
   useEffect(() => { api.get("/garage/vehicles/").then((r) => { setCars(r.data); if (r.data[0]) setVehicle(String(r.data[0].id)); }); }, []);
-  const point: [number, number] = pick || [geo.lat, geo.lng];
+  // GPS hali aniqlanmagan bo'lsa — nuqta YO'Q (Toshkent markazi hech qachon SOS sifatida yuborilmaydi)
+  const point: [number, number] | null = pick || (geo.real ? [geo.lat, geo.lng] : null);
+  const [locBusy, setLocBusy] = useState(false);
 
   const send = async () => {
+    if (busy) return;
     setBusy(true);
-    try { const r = await api.post("/sos/", { kind, lat: point[0], lng: point[1], address, note, vehicle: vehicle || undefined }); toast("So'rov yuborildi! Eng yaqin yordamchilar xabardor qilindi.", "success"); onCreated(r.data); }
+    try {
+      let at = point;
+      // xaritada qo'lda tanlanmagan va GPS hali yetarlicha aniq emas — bir necha soniya aniqroq nuqtani kutamiz
+      if (!pick && (!geo.real || geo.accuracy == null || geo.accuracy > 30)) {
+        setLocBusy(true);
+        try {
+          const f = await getPreciseLocation({ desired: 30, maxWait: geo.real ? 6000 : 12000 });
+          if (!geo.real || geo.accuracy == null || f.accuracy <= geo.accuracy) { at = [f.lat, f.lng]; geo.set(f.lat, f.lng, f.accuracy); }
+        } catch (e: any) {
+          if (!at) { toast(geoErrorText(e) + " Xaritada turgan joyingizni bosing va SOS ni qayta bosing.", "error"); return; }
+        } finally { setLocBusy(false); }
+      }
+      if (!at) { toast("Joylashuvingiz aniqlanmadi. Xaritada turgan joyingizni bosing va SOS ni qayta bosing.", "error"); return; }
+      const r = await api.post("/sos/", { kind, lat: at[0], lng: at[1], address, note, vehicle: vehicle || undefined });
+      toast("So'rov yuborildi! Eng yaqin yordamchilar xabardor qilindi.", "success"); onCreated(r.data);
+    }
     catch (e) { toast(errMsg(e), "error"); } finally { setBusy(false); }
   };
 
@@ -53,7 +72,7 @@ function CreateSos({ initialKind, onCreated }: { initialKind: string; onCreated:
         <h2 style={{ fontSize: 26 }}>Favqulodda yordam kerakmi?</h2>
         <p className="small" style={{ color: "#aab5c9" }}>Tez yordam chaqirish orqali sizga eng yaqin xizmat ko'rsatuvchilarni yuboramiz.</p>
       </div>
-      <button className={"sos-big" + (busy ? " pulse" : "")} onClick={send} disabled={busy} aria-label="SOS yuborish">SOS</button>
+      <button className={"sos-big" + (busy ? " pulse" : "")} onClick={send} disabled={busy} aria-label="SOS yuborish">{locBusy ? "📍" : "SOS"}</button>
       <div className="col gap-8">
         {KINDS.map((k) => (
           <button key={k.k} className={"sos-option" + (kind === k.k ? " active" : " alt")} onClick={() => setKind(k.k)}>
@@ -65,16 +84,21 @@ function CreateSos({ initialKind, onCreated }: { initialKind: string; onCreated:
       </div>
       <div className="col gap-8">
         <div className="row between"><b className="row gap-8"><MapPin size={18} />Lokatsiya</b>
-          <button className="btn btn-sm btn-ghost" style={{ color: "#fff" }} onClick={() => setPick(null)}><LocateFixed size={14} />GPS</button></div>
-        <div className="small" style={{ color: "#aab5c9" }}>{geo.error ? geo.error : pick ? "Xaritada tanlangan nuqta" : geo.real ? "GPS orqali aniqlandi" : "Aniqlanmoqda…"} — xaritaga bosib aniqlashtirishingiz mumkin.</div>
-        <MapView center={point} me={point} zoom={14} onPick={(a, b) => setPick([a, b])} follow className="map-box" />
+          <button className="btn btn-sm btn-ghost" style={{ color: "#fff" }} onClick={() => { setPick(null); geo.refresh(); }}><LocateFixed size={14} />GPS</button></div>
+        <div className="small" style={{ color: geo.accuracy != null && geo.accuracy > 100 && !pick ? "#ffb4a8" : "#aab5c9" }}>
+          {pick ? "📍 Xaritada tanlangan nuqta" : geo.error && !geo.real ? geo.error
+            : geo.real ? <>📍 GPS orqali aniqlandi ({accText(geo.accuracy)}){geo.locating && " — aniqlashtirilmoqda…"}{geo.accuracy != null && geo.accuracy > 100 && " — aniqlik past, xaritada joyingizni bosib belgilang"}</>
+            : "📍 Joylashuv aniqlanmoqda…"} {!pick && "Xaritaga bosib aniq joyni belgilashingiz mumkin."}
+        </div>
+        <MapView center={point || TASHKENT} me={point} accuracy={pick ? null : geo.accuracy} zoom={point ? 16 : 12} onPick={(a, b) => setPick([a, b])} follow
+          onLocate={(lat, lng, acc) => { setPick(null); geo.set(lat, lng, acc); }} className="map-box" />
       </div>
       <div className="dark-form col gap-8">
         <label className="field"><span>Manzil / mo'ljal</span><input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Masalan: Chilonzor, Bunyodkor ko'chasi, Makro yonida" /></label>
         {cars.length > 0 && <label className="field"><span>Avtomobil</span><select className="input" value={vehicle} onChange={(e) => setVehicle(e.target.value)}>{cars.map((c) => <option key={c.id} value={c.id}>{c.brand} {c.model} {c.plate}</option>)}<option value="">—</option></select></label>}
         <label className="field"><span>Muammo</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Akkumulyator o'tirib qoldi, g'ildirak teshildi…" /></label>
       </div>
-      <button className="btn btn-red btn-lg btn-block" onClick={send} disabled={busy}><Phone size={18} />{busy ? "Yuborilmoqda…" : "Yordam chaqirish"}</button>
+      <button className="btn btn-red btn-lg btn-block" onClick={send} disabled={busy}><Phone size={18} />{locBusy ? "Joylashuv aniqlanmoqda…" : busy ? "Yuborilmoqda…" : "Yordam chaqirish"}</button>
       <p className="xs" style={{ textAlign: "center", color: "#7d8aa3" }}>Hayotga xavf bo'lsa darhol <a href="tel:112" style={{ textDecoration: "underline" }}>112</a> ga qo'ng'iroq qiling.{site.support_phone && <> Avtora yordam: <a href={`tel:${site.support_phone.replace(/\s/g, "")}`} style={{ textDecoration: "underline" }}>{site.support_phone}</a></>}</p>
     </div>
   );

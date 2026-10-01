@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { getPreciseLocation } from "../../geo";
 import { Link } from "react-router-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -85,11 +86,9 @@ function Plan({ onStarted }: { onStarted: (t: any) => void }) {
   const useMyLocation = () => {
     setLocErr("");
     if (!navigator.geolocation) { setLocErr("Qurilma joylashuvni aniqlay olmaydi. Boshlanish nuqtasini qidiring yoki xaritadan tanlang."); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => setStart({ lat: p.coords.latitude, lng: p.coords.longitude, name: "Mening joylashuvim" }),
-      (e) => setLocErr(e.code === 1 ? "📍 Joylashuvga ruxsat berilmagan. Safar davomida aniq yoqilg'i va marshrut eslatmalarini olish uchun joylashuvga ruxsat bering." : "GPS signal topilmadi. Boshlanish nuqtasini qidiring yoki xaritadan tanlang."),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    );
+    getPreciseLocation({ desired: 30, maxWait: 12000 })
+      .then((f) => setStart({ lat: f.lat, lng: f.lng, name: "Mening joylashuvim" }))
+      .catch((e) => setLocErr(e.code === 1 ? "📍 Joylashuvga ruxsat berilmagan. Safar davomida aniq yoqilg'i va marshrut eslatmalarini olish uchun joylashuvga ruxsat bering." : "GPS signal topilmadi. Boshlanish nuqtasini qidiring yoki xaritadan tanlang."));
   };
   const go = async () => {
     if (!start || !dest || !fuel) return;

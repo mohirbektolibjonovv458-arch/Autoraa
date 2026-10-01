@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getPreciseLocation } from "../geo";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -147,12 +148,13 @@ function LocationSync() {
     if (!user || user.role === "user" || !user.is_online || !navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
       (p) => {
+        if ((p.coords.accuracy || 0) > 1000) return;  // minora bo'yicha taxminiy nuqta — mijozlarga noto'g'ri masofa ko'rsatmaylik
         if (Date.now() - last.current < 15000) return;
         last.current = Date.now();
         api.post("/auth/location/", { lat: p.coords.latitude, lng: p.coords.longitude }).catch(() => {});
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [user?.id, user?.is_online]);
@@ -268,11 +270,9 @@ export function OnlineToggle() {
       await api.patch("/auth/me/", { is_online: next });
       setUser({ ...user!, is_online: next });
       if (next) {
-        navigator.geolocation?.getCurrentPosition(
-          (p) => { api.post("/auth/location/", { lat: p.coords.latitude, lng: p.coords.longitude }).catch(() => {}); },
-          () => toast("Joylashuvga ruxsat bering — shunda sizga eng yaqin buyurtmalar keladi.", "error"),
-          { timeout: 15000, maximumAge: 60000 },
-        );
+        getPreciseLocation({ desired: 30, maxWait: 15000 })
+          .then((f) => { api.post("/auth/location/", { lat: f.lat, lng: f.lng }).catch(() => {}); })
+          .catch(() => toast("Joylashuvga ruxsat bering — shunda sizga eng yaqin buyurtmalar keladi.", "error"));
       }
     } catch (e) {
       toast(errMsg(e), "error");

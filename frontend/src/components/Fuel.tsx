@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { geoErrorText, getPreciseLocation } from "../geo";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Bell, BellRing, Check, Clock, List, LocateFixed, Map as MapIcon, MapPin, Navigation, Phone, Plus, Route, Search, Trophy, Users, X } from "lucide-react";
 import { api, errMsg } from "../api";
@@ -111,11 +112,9 @@ export default function FuelView({ publicMode = false }: { publicMode?: boolean 
     if (me) return go(me);
     if (!navigator.geolocation) { toast("Qurilma joylashuvni aniqlay olmaydi", "error"); return; }
     setRouting(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => { const c: [number, number] = [p.coords.latitude, p.coords.longitude]; setMe(c); go(c); },
-      () => { setRouting(false); toast("Marshrut uchun joylashuvga ruxsat bering", "error"); },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
-    );
+    getPreciseLocation({ desired: 30, maxWait: 12000 })
+      .then((f) => { const c: [number, number] = [f.lat, f.lng]; setMe(c); go(c); })
+      .catch(() => { setRouting(false); toast("Marshrut uchun joylashuvga ruxsat bering", "error"); });
   };
 
   useEffect(() => { localStorage.setItem("ah_fuel_filter", filter); }, [filter]);
@@ -130,19 +129,27 @@ export default function FuelView({ publicMode = false }: { publicMode?: boolean 
   const locate = (explicit = true) => {
     if (!navigator.geolocation) { if (explicit) toast("Qurilmangiz joylashuvni aniqlay olmaydi", "error"); return; }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const c: [number, number] = [p.coords.latitude, p.coords.longitude];
+    getPreciseLocation({ desired: 30, maxWait: 12000 })
+      .then((f) => {
+        const c: [number, number] = [f.lat, f.lng];
         setMe(c); setLocating(false);
         setFly({ c, z: 13, k: Date.now() });
         if (explicit) setMobileView("list");
-      },
-      (e) => {
+      })
+      .catch((e) => {
         setLocating(false);
         if (explicit) toast(e.code === 1 ? "Joylashuvga ruxsat berilmadi. Xaritani surib istalgan hududni ko'rishingiz mumkin." : "Joylashuvni aniqlab bo'lmadi, qayta urinib ko'ring.", "error");
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    );
+      });
+  };
+
+  // Xaritadagi «Mening joylashuvim»: har safar GPS'dan yangi aniq nuqta (eskirgan nuqtaga emas)
+  const relocate = () => {
+    if (locating) return;
+    setLocating(true);
+    getPreciseLocation({ desired: 20, maxWait: 12000 })
+      .then((f) => { const c: [number, number] = [f.lat, f.lng]; setMe(c); setFly({ c, z: 16, k: Date.now() }); })
+      .catch((e) => { toast(geoErrorText(e), "error"); if (me) setFly({ c: me, z: 15, k: Date.now() }); })
+      .finally(() => setLocating(false));
   };
 
   // Xarita hududi o'zgarganda — faqat shu hudud (debounce)
@@ -241,7 +248,7 @@ export default function FuelView({ publicMode = false }: { publicMode?: boolean 
           )}
           {routing && <div className="route-loading"><span className="im-spin" />Marshrut hisoblanmoqda…</div>}
           <FuelMap data={mapData} filter={filter} me={me} selected={sel} fly={fly} onView={setView} onOpen={open} route={route}
-            onLocate={() => { if (me) setFly({ c: me, z: 15, k: Date.now() }); else locate(true); }}
+            onLocate={relocate}
             onZoomTo={(c, z) => setFly({ c, z, k: Date.now() })} />
           <div className="fuel-legend">{["benzin", "propan", "metan"].map((k) => <span key={k}><i style={{ background: TYPE_COLOR[k] }} />{fuelLabel(k)}</span>)}<span><i className="st" />holat</span></div>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { rememberFix } from "./geo";
 
 export const money = (n?: number | null) =>
   n == null ? "—" : `${Math.round(n).toLocaleString("ru-RU").replace(/,/g, " ")} so'm`;
@@ -42,22 +43,49 @@ export const STATUS_TONE: Record<string, string> = {
   cancelled: "red", rejected: "red",
 };
 
-/** Brauzer GPS. Rad etilsa Toshkent markazi qaytadi. */
+/** Brauzer GPS. Rad etilsa (yoki hali aniqlanmagan bo'lsa) Toshkent markazi qaytadi — real=false.
+ * Birinchi taxminiy (Wi-Fi/minora) nuqtada to'xtamaydi: GPS aniqlashguncha kuzatadi va eng aniq natijani oladi.
+ * watch=false — aniq nuqta (≤25 m) topilgach yoki 25 soniyadan keyin kuzatish to'xtaydi; refresh() — qaytadan aniqlash. */
 export function useGeo(watch = false) {
-  const [pos, setPos] = useState<{ lat: number; lng: number; real: boolean }>({ lat: TASHKENT[0], lng: TASHKENT[1], real: false });
+  const [pos, setPos] = useState<{ lat: number; lng: number; real: boolean; accuracy: number | null }>({ lat: TASHKENT[0], lng: TASHKENT[1], real: false, accuracy: null });
   const [error, setError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(true);
+  const [run, setRun] = useState(0);
   useEffect(() => {
-    if (!navigator.geolocation) { setError("Brauzeringiz GPS ni qo'llab-quvvatlamaydi."); return; }
-    const ok = (p: GeolocationPosition) => { setPos({ lat: p.coords.latitude, lng: p.coords.longitude, real: true }); setError(null); };
-    const fail = () => setError("Joylashuvga ruxsat berilmadi. Toshkent markazi ko'rsatilmoqda.");
-    const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 };
-    if (watch) {
-      const id = navigator.geolocation.watchPosition(ok, fail, opts);
-      return () => navigator.geolocation.clearWatch(id);
-    }
-    navigator.geolocation.getCurrentPosition(ok, fail, opts);
-  }, [watch]);
-  return { ...pos, error };
+    if (!navigator.geolocation) { setError("Brauzeringiz GPS ni qo'llab-quvvatlamaydi."); setLocating(false); return; }
+    setLocating(true);
+    let cur: { accuracy: number; at: number; lat: number; lng: number } | null = null;
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const stop = () => { navigator.geolocation.clearWatch(id); setLocating(false); };
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        const acc = Math.round(Number.isFinite(p.coords.accuracy) ? p.coords.accuracy : 9999), now = Date.now();
+        rememberFix({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: acc, at: now });
+        const { latitude: lat, longitude: lng } = p.coords;
+        const movedM = cur ? Math.hypot((lat - cur.lat) * 111320, (lng - cur.lng) * 111320 * Math.cos(lat * Math.PI / 180)) : Infinity;
+        const better = !cur || acc < cur.accuracy * 0.7;              // aniqlik sezilarli oshdi
+        const usable = !cur || acc <= cur.accuracy || acc <= 50 || now - cur.at > 15000;  // harakatlanayotganda yangi nuqta
+        // 10 m dan kam siljish — sahifani (va server so'rovlarini) qayta yuklatmaymiz
+        if (better || (usable && movedM >= 10)) {
+          cur = { accuracy: acc, at: now, lat, lng };
+          setPos({ lat, lng, real: true, accuracy: acc });
+        }
+        setError(null);
+        if (!watch && acc <= 25) stop();
+      },
+      (e) => {
+        if (e.code === 1) { setError("Joylashuvga ruxsat berilmadi. Toshkent markazi ko'rsatilmoqda — telefon sozlamalarida joylashuvga ruxsat bering."); stop(); }
+        else if (!cur) setError("GPS signal topilmadi. Telefonda «Joylashuv» yoqilganini tekshiring yoki xaritadan joyingizni belgilang.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+    );
+    if (!watch) stopTimer = setTimeout(stop, 25000);
+    return () => { clearTimeout(stopTimer); navigator.geolocation.clearWatch(id); };
+  }, [watch, run]);
+  const refresh = () => { setError(null); setRun((r) => r + 1); };
+  /** tashqaridan olingan aniq nuqta («Mening joylashuvim» tugmasi) */
+  const set = (lat: number, lng: number, accuracy: number) => { setPos({ lat, lng, real: true, accuracy }); setError(null); };
+  return { ...pos, error, locating, refresh, set };
 }
 
 export function usePoll(fn: () => void, ms: number, deps: any[] = []) {

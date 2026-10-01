@@ -50,7 +50,7 @@ def register(pg, role, phone9, chat_id, first, extra=None):
     pg.wait_for_url(re.compile(r"/app"), timeout=10000)
 
 with sync_playwright() as p:
-    b=p.chromium.launch(args=["--no-sandbox"])
+    b=p.chromium.launch(args=["--no-sandbox"], executable_path=os.getenv("CHROMIUM_PATH") or None)
     uctx, U = newctx(b); sctx, S = newctx(b, (41.315,69.285)); ectx, E = newctx(b, (41.32,69.29)); actx, A = newctx(b)
     CUR["page"]=U
 
@@ -60,8 +60,15 @@ with sync_playwright() as p:
 
     def admin_login():
         CUR["page"]=A; A.goto(B+"/admin/login")
+        # admin raqami kod botiga ulanadi (ikki bosqichli kirish uchun shart)
+        push(AUTH_TOKEN, {"message": {"message_id": 1, "chat": {"id": 5009, "type": "private"}, "from": {"id": 5009}, "contact": {"user_id": 5009, "phone_number": "998900000000"}}})
+        time.sleep(1.5)
         A.locator("input").nth(0).fill("+998 90 000 00 00"); A.locator("input[type=password]").fill("secret12345")
-        A.get_by_role("button", name=re.compile("Kirish")).click(); A.wait_for_url(re.compile(r"/admin/?$"), timeout=8000)
+        A.get_by_role("button", name="Davom etish").click()
+        A.get_by_label("Telegram'ga kelgan 4 xonali kod").wait_for(timeout=8000); time.sleep(0.5)
+        code=last_code(5009); assert code, "admin kodi botga kelmadi"
+        A.get_by_label("Telegram'ga kelgan 4 xonali kod").fill(code)
+        A.get_by_role("button", name="Kirish", exact=True).click(); A.wait_for_url(re.compile(r"/admin/?$"), timeout=8000)
     step("Admin panelga kirish", admin_login)
 
     def usta_service():
@@ -77,14 +84,17 @@ with sync_playwright() as p:
 
     def booking():
         CUR["page"]=U; U.goto(B+"/app/masters"); U.get_by_role("button", name="Bron qilish").first.click()
-        U.locator(".chips .chip").nth(1).click()  # ertangi kun
-        U.locator(".slot:not([disabled])").first.click(); U.get_by_placeholder("Muammoni qisqacha yozing").fill("Check engine yonyapti")
+        U.locator(".day-strip .day").nth(1).click()  # ertangi kun
+        U.locator(".slot:not([disabled]):not(.skel)").first.click(); U.locator(".modal textarea").fill("Check engine yonyapti")
         U.locator(".modal").get_by_role("button", name=re.compile("Bron|Tasdiqlash|Yuborish")).last.click()
         U.wait_for_timeout(1500); assert U.locator(".modal").count()==0 or "band" not in U.locator(".modal").inner_text(), U.locator(".modal").inner_text()[:200]
     step("Foydalanuvchi ustaga bron qiladi", booking)
 
     def usta_confirm():
-        CUR["page"]=S; S.goto(B+"/app/usta/orders"); S.get_by_role("button", name="Tasdiqlash").first.click(); S.get_by_text("Tasdiqlangan").first.wait_for(timeout=5000)
+        CUR["page"]=S; S.goto(B+"/app/usta/orders"); S.get_by_role("button", name="Tasdiqlash").first.click()
+        S.get_by_text("Mijozga xabar yuborildi").wait_for(timeout=5000)
+        # tasdiqlangan bron «Yangi» bo'limidan o'z kuni bo'limiga («Ertaga») o'tadi
+        S.locator(".tabs button", has_text="Ertaga").click(); S.get_by_text("Tasdiqlangan").first.wait_for(timeout=5000)
         assert any("Kompyuter diagnostikasi" in m["text"] or "bron" in m["text"].lower() for m in sent() if str(m["chat_id"])=="5001"), "ustaga Telegram xabari bormadi"
     step("Usta bronni tasdiqlaydi (+Telegram xabar)", usta_confirm)
 
