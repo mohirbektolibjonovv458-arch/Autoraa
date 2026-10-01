@@ -1,0 +1,65 @@
+# Serverda ishga tushirish (Docker bilan): README → «Serverga joylash»
+#   1) backend/.env ni to'ldiring (DOMAIN, POSTGRES_PASSWORD, ADMIN_PHONE, ADMIN_PASSWORD ...)
+#   2) docker compose --env-file backend/.env up -d --build
+# Caddy avtomatik ravishda bepul HTTPS sertifikat oladi.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: avtora
+      POSTGRES_USER: avtora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?backend/.env da POSTGRES_PASSWORD yozing}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avtora"]
+      interval: 10s
+      retries: 5
+
+  app:
+    build: .
+    restart: always
+    env_file: backend/.env
+    environment:
+      POSTGRES_DB: avtora
+      POSTGRES_USER: avtora
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      HTTPS: "1"
+      TRUSTED_PROXY: "*"   # faqat Caddy orqali kiriladi, app porti tashqariga ochilmagan
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - media:/app/media
+      - tiles:/app/tilecache
+      - ./backend/logs:/app/logs
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?backend/.env da DOMAIN yozing (masalan avtora.uz)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+
+  # Har kuni bazaning zaxira nusxasi (oxirgi 14 kun) — ./backups papkasida
+  backup:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes: ["./backups:/backups"]
+    entrypoint: ["sh", "-c", "while true; do pg_dump -h db -U avtora avtora | gzip > /backups/db-$$(date +%Y%m%d-%H%M).sql.gz; find /backups -name 'db-*.sql.gz' -mtime +14 -delete; sleep 86400; done"]
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  tiles:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

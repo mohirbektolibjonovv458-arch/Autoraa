@@ -1,0 +1,11 @@
+**/node_modules
+**/__pycache__
+backend/venv
+backend/db.sqlite3
+backend/media
+backend/logs
+backend/backups
+backend/staticfiles
+.git
+backend/.env
+backend/tilecache

@@ -1,0 +1,19 @@
+# Ubuntu serverda doimiy ishlashi uchun (server qayta yonganda ham avtomatik ishga tushadi)
+# 1) Loyihani /opt/avtora ga qo'ying va bir marta:  cd /opt/avtora && ./start.sh   (admin yaratiladi, Ctrl+C)
+# 2) sudo cp deploy/avtora.service /etc/systemd/system/
+# 3) sudo systemctl daemon-reload && sudo systemctl enable --now avtora
+# Loglar: journalctl -u avtora -f
+[Unit]
+Description=Avtora (sayt + API + Telegram botlar)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/avtora/backend
+ExecStart=/opt/avtora/backend/venv/bin/python manage.py start
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /yoqilgi
+Allow: /blog
+Disallow: /app
+Disallow: /admin
+Disallow: /api
