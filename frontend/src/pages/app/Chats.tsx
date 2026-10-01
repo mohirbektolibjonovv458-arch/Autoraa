@@ -73,7 +73,7 @@ function Room({ id }: { id: string }) {
       <div className="chat-msgs" ref={box}>
         {msgs.map((m) => (
           <div key={m.id} translate="no" className={"bubble" + (m.sender === user?.id ? " me" : "")}>
-            {m.image && <a href={media(m.image)} target="_blank" rel="noreferrer"><img src={media(m.image)} alt="" /></a>}
+            {m.image && <ChatImage src={media(m.image)} />}
             {m.lat && <a href={`https://maps.google.com/?q=${m.lat},${m.lng}`} target="_blank" rel="noreferrer" className="row gap-4" style={{ textDecoration: "underline" }}><MapPin size={14} />Xaritada ochish</a>}
             {m.text && <div>{m.text}</div>}
             <time>{hhmm(m.created_at)}</time>
@@ -88,4 +88,11 @@ function Room({ id }: { id: string }) {
       </div>
     </div>
   );
+}
+
+/** Chat rasmi; fayl serverda topilmasa — buzilgan rasm belgisi o'rniga tushunarli yozuv */
+function ChatImage({ src }: { src: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return <span className="xs muted">🖼 Rasm mavjud emas</span>;
+  return <a href={src} target="_blank" rel="noreferrer"><img src={src} alt="" onError={() => setBroken(true)} /></a>;
 }
