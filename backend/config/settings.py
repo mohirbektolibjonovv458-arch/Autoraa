@@ -228,6 +228,7 @@ CSP_HEADER = "; ".join([
     "img-src 'self' data: blob:",  # xarita plitalari ham o'z serverimiz orqali (/api/map/tiles/)
     "connect-src 'self' https://accounts.google.com/gsi/",
     "frame-src https://accounts.google.com/gsi/",
+    "media-src 'self' blob:",  # ovozli xabarlarni ijro etish (yozib olingan audio — blob:)
     "manifest-src 'self'",
     "worker-src 'self'",
     "frame-ancestors 'none'",
@@ -235,7 +236,8 @@ CSP_HEADER = "; ".join([
     "base-uri 'self'",
     "form-action 'self'",
 ])
-PERMISSIONS_POLICY = ("geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=(), "
+# microphone=(self) — chatda ovozli xabar yozish uchun (faqat o'z saytimizda)
+PERMISSIONS_POLICY = ("geolocation=(self), camera=(), microphone=(self), payment=(), usb=(), interest-cohort=(), "
                       'identity-credentials-get=(self "https://accounts.google.com")')  # Google bilan kirish (FedCM)
 
 # --- Google bilan kirish: Google Cloud Console → Credentials → OAuth client ID (Web application).

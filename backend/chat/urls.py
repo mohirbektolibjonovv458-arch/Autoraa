@@ -8,4 +8,6 @@ urlpatterns = [
     path("start/", views.StartConversationView.as_view()),
     path("unread/", views.UnreadView.as_view()),
     path("<int:pk>/messages/", views.MessagesView.as_view()),
+    path("<int:pk>/messages/<int:mid>/", views.MessageDetailView.as_view()),
+    path("audio/<int:pk>/", views.ChatAudioView.as_view()),
 ]
