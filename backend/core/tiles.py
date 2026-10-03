@@ -33,9 +33,12 @@ class TileThrottle(AnonRateThrottle):
 
 
 def _layer(name):
-    """Qatlamlar: std — oddiy xarita; sat — sun'iy yo'ldosh surati; labels — ko'cha/joy nomlari (sun'iy yo'ldosh ustiga)."""
+    """Qatlamlar: std — oddiy xarita; dark — tayyor tungi plitalar (ixtiyoriy); sat — sun'iy yo'ldosh surati;
+    labels — ko'cha/joy nomlari (sun'iy yo'ldosh ustiga)."""
     if name == "std":
         return settings.MAP_TILE_URL, settings.MAP_TILE_KEY
+    if name == "dark":
+        return (settings.MAP_DARK_TILE_URL or None), settings.MAP_DARK_TILE_KEY
     if name == "sat":
         return settings.SAT_TILE_URL, settings.SAT_TILE_KEY
     if name == "labels":
@@ -48,7 +51,7 @@ def tile_view(request, z, x, y, layer="std"):
     if not url_tpl:
         raise Http404
     z, x, y = int(z), int(x), int(y)
-    max_z = 19 if layer == "std" else 20
+    max_z = 19 if layer in ("std", "dark") else 20
     if not (0 <= z <= max_z) or not (0 <= x < 2 ** z) or not (0 <= y < 2 ** z):
         raise Http404
     path = Path(settings.TILE_CACHE_DIR) / ("" if layer == "std" else layer) / str(z) / str(x) / f"{y}.img"

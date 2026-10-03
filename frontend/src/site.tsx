@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { api } from "./api";
 
-export type Site = { site_name: string; tagline: string; support_phone: string; premium_price: number; maintenance: boolean; map_attribution?: string; apk_url?: string; sat_enabled?: boolean; sat_attribution?: string; google_client_id?: string };
+export type Site = { site_name: string; tagline: string; support_phone: string; premium_price: number; maintenance: boolean; map_attribution?: string; apk_url?: string; sat_enabled?: boolean; sat_attribution?: string; google_client_id?: string; map_dark_native?: boolean };
 const DEFAULT: Site = { site_name: "Avtora", tagline: "Avtomobilingiz uchun barcha xizmatlar — bir joyda", support_phone: "", premium_price: 40000, maintenance: false };
 const Ctx = createContext<Site>(DEFAULT);
 

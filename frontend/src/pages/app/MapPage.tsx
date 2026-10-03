@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronRight, Fuel } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth";
@@ -24,8 +25,10 @@ export default function MapPage() {
 
   const list = masters.filter((m) => m.user.lat && (filter !== "verified" || m.is_verified));
   const pins: Pin[] = [
-    ...list.map((m) => ({ id: "m" + m.id, lat: m.user.lat, lng: m.user.lng, title: m.name, color: m.user.is_online ? "#1f6feb" : "#8a96a8", onClick: () => setSel(m) })),
-    ...sos.map((s) => ({ id: "s" + s.id, lat: s.lat, lng: s.lng, color: "#ee2b2f", label: "!", popup: <div><b>SOS: {s.kind_label}</b><br />{s.client.full_name}<br />{s.distance_km != null && `${s.distance_km} km`}<br /><a onClick={() => nav(user?.role === "evakuator" ? "/app/evak" : "/app/usta/sos")} style={{ cursor: "pointer", color: "#1f6feb" }}>Qabul qilish →</a></div> })),
+    // usta: rasmi (bo'lmasa — kalit ikonkasi) va ★ reytingi; offline — kulrang
+    ...list.map((m): Pin => ({ id: "m" + m.id, lat: m.user.lat, lng: m.user.lng, title: m.name, kind: "usta", avatar: m.user.avatar || null,
+      rating: m.reviews_count ? Number(m.rating) : null, online: !!m.user.is_online, active: sel?.id === m.id, onClick: () => setSel(m) })),
+    ...sos.map((s): Pin => ({ id: "s" + s.id, lat: s.lat, lng: s.lng, kind: "sos", title: "SOS", popup: <div><b>SOS: {s.kind_label}</b><br />{s.client.full_name}<br />{s.distance_km != null && `${s.distance_km} km`}<br /><a onClick={() => nav(user?.role === "evakuator" ? "/app/evak" : "/app/usta/sos")} style={{ cursor: "pointer", color: "#1f6feb" }}>Qabul qilish →</a></div> })),
   ];
 
   return (
@@ -37,7 +40,9 @@ export default function MapPage() {
       </div>
       {geo.error && <p className="xs muted">📍 {geo.error}</p>}
       {provider && sos.length > 0 && <div className="alert error">Yaqin atrofda {sos.length} ta SOS so'rov bor (qizil belgilar).</div>}
-      <MapView center={[geo.lat, geo.lng]} me={geo.real ? [geo.lat, geo.lng] : null} accuracy={geo.accuracy} onLocate={geo.set} pins={pins} zoom={12} className="map-box" />
+      <MapView center={[geo.lat, geo.lng]} me={geo.real ? [geo.lat, geo.lng] : null} accuracy={geo.accuracy} onLocate={geo.set} pins={pins} zoom={12} className="map-box map-premium map-big">
+        <Link to="/app/fuel" className="map-chip"><span className="map-chip-ico"><Fuel size={16} /></span><span>Benzin, propan, metan zapravkalar</span><ChevronRight size={16} /></Link>
+      </MapView>
       {sel && (
         <div className="card row gap-12">
           <Avatar name={sel.name} src={sel.user.avatar} size="lg" />
@@ -49,7 +54,7 @@ export default function MapPage() {
           <Link className="btn btn-sm" to={`/app/masters/${sel.id}`}>Profil</Link>
         </div>
       )}
-      <p className="xs muted">Ko'k — online ustalar, kulrang — offline. Belgiga bosing.</p>
+      <p className="xs muted">Rangli — hozir online ustalar, kulrang — offline. ★ — reyting. Belgiga bosing.</p>
     </div>
   );
 }

@@ -9,7 +9,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { useSite } from "../site";
-import { BaseTiles, LayerButton } from "./MapLayers";
+import { BaseTiles, MapChrome } from "./MapLayers";
+import { meIcon } from "../mapMarkers";
+import { svgIcon } from "../mapIcons";
 import { Empty, Modal, Spinner, useToast } from "./ui";
 
 export const FUELS = [
@@ -248,7 +250,7 @@ export default function FuelView({ publicMode = false }: { publicMode?: boolean 
           )}
           {routing && <div className="route-loading"><span className="im-spin" />Marshrut hisoblanmoqda…</div>}
           <FuelMap data={mapData} filter={filter} me={me} selected={sel} fly={fly} onView={setView} onOpen={open} route={route}
-            onLocate={relocate}
+            onLocate={relocate} locating={locating}
             onZoomTo={(c, z) => setFly({ c, z, k: Date.now() })} />
           <div className="fuel-legend">{["benzin", "propan", "metan"].map((k) => <span key={k}><i style={{ background: TYPE_COLOR[k] }} />{fuelLabel(k)}</span>)}<span><i className="st" />holat</span></div>
         </div>
@@ -313,9 +315,15 @@ const clusterIcon = (n: number) => {
   const size = n < 10 ? 34 : n < 100 ? 40 : n < 1000 ? 48 : 56;
   return L.divIcon({ className: "", html: `<div class="fcluster" style="width:${size}px;height:${size}px">${n}</div>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
 };
-const stationIcon = (type: string, status: string, active: boolean) =>
-  L.divIcon({ className: "", html: `<div class="fpin${active ? " on" : ""}" style="background:${TYPE_COLOR[type] || "#1f6feb"}"><span class="fst" style="background:${(FSTATUS[status] || FSTATUS.unknown).color}"></span></div>`, iconSize: [28, 36], iconAnchor: [14, 34] });
-const meIcon = L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
+// Zapravka belgisi: dumaloq, yoqilg'i turi rangida ⛽ ikonka; burchakdagi nuqta — hozirgi holat (bor / navbat / yo'q)
+const stationIcons = new Map<string, L.DivIcon>();
+const stationIcon = (type: string, status: string, active: boolean) => {
+  const k = `${type}|${status}|${active}`;
+  if (!stationIcons.has(k)) stationIcons.set(k, L.divIcon({ className: "mk-wrap",
+    html: `<div class="mk mk-ico fuelmk${active ? " active" : ""}" style="--c:${TYPE_COLOR[type] || "#1f6feb"}">${svgIcon("fuel", 16)}<span class="fst" style="background:${(FSTATUS[status] || FSTATUS.unknown).color}"></span></div>`,
+    iconSize: [36, 36], iconAnchor: [18, 18] }));
+  return stationIcons.get(k)!;
+};
 
 function ViewWatcher({ onView }: { onView: (v: View) => void }) {
   const map = useMapEvents({ moveend: () => emit(), zoomend: () => emit() });
@@ -351,16 +359,16 @@ function RouteLayer({ route, onOpenStation }: { route: any; onOpenStation?: (id:
 }
 const destIcon = L.divIcon({ className: "", html: `<div class="dest-pin"><span></span></div>`, iconSize: [30, 40], iconAnchor: [15, 38] });
 
-function FuelMap({ data, filter, me, selected, fly, onView, onOpen, onZoomTo, route, onLocate }: {
+function FuelMap({ data, filter, me, selected, fly, onView, onOpen, onZoomTo, route, onLocate, locating }: {
   data: any; filter: string; me: [number, number] | null; selected: number | null; fly: any;
-  onView: (v: View) => void; onOpen: (id: number) => void; onZoomTo: (c: [number, number], z: number) => void; route?: any; onLocate: () => void;
+  onView: (v: View) => void; onOpen: (id: number) => void; onZoomTo: (c: [number, number], z: number) => void; route?: any; onLocate: () => void; locating?: boolean;
 }) {
-  const site = useSite();
   const [zoom, setZoom] = useState(UZ_VIEW.z);
+  const [map, setMap] = useState<L.Map | null>(null);
   return (
-    <div className="map-box">
+    <div className="map-box map-premium">
       <MapContainer bounds={[[37.18, 55.99], [45.59, 73.15]]} minZoom={5} maxZoom={18} style={{ height: "100%", width: "100%" }} scrollWheelZoom
-        maxBounds={[[34.5, 52], [48.5, 77]]} maxBoundsViscosity={0.8}>
+        maxBounds={[[34.5, 52], [48.5, 77]]} maxBoundsViscosity={0.8} zoomControl={false} ref={setMap}>
         <BaseTiles />
         <ViewWatcher onView={(v) => { setZoom(v.zoom); onView(v); }} />
         <Flyer fly={fly} />
@@ -378,8 +386,7 @@ function FuelMap({ data, filter, me, selected, fly, onView, onOpen, onZoomTo, ro
           );
         })}
       </MapContainer>
-      <LayerButton />
-      <button className="map-locate" onClick={onLocate} aria-label="Mening joylashuvim" title="Mening joylashuvim"><LocateFixed size={20} /></button>
+      <MapChrome map={map} onLocate={onLocate} locating={locating} />
     </div>
   );
 }

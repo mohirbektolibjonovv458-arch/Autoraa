@@ -84,7 +84,7 @@ urlpatterns = [
     path("api/map/route/", RouteView.as_view()),
     path("api/map/geocode/", GeocodeView.as_view()),
     re_path(r"^api/map/tiles/(?P<z>\d{1,2})/(?P<x>\d{1,7})/(?P<y>\d{1,7})\.png$", tile_view),
-    re_path(r"^api/map/(?P<layer>sat|labels)/(?P<z>\d{1,2})/(?P<x>\d{1,7})/(?P<y>\d{1,7})\.img$", tile_view),
+    re_path(r"^api/map/(?P<layer>sat|labels|dark)/(?P<z>\d{1,2})/(?P<x>\d{1,7})/(?P<y>\d{1,7})\.img$", tile_view),
     path("api/auth/", include("accounts.urls")),
     path("api/garage/", include("garage.urls")),
     path("api/masters/", include("masters.urls")),

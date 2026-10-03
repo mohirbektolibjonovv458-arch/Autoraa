@@ -250,6 +250,10 @@ SITE_URL = os.getenv("SITE_URL", "") or (f"https://{DOMAIN}" if DOMAIN else "")
 # --- Xarita plitalari (core/tiles.py) — kalit faqat serverda ---
 MAP_TILE_URL = os.getenv("MAP_TILE_URL") or "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 MAP_TILE_KEY = os.getenv("MAP_TILE_KEY", "")
+# Ixtiyoriy: provayderning tayyor tungi (dark) plitalari, masalan MapTiler «streets-v2-dark» yoki Stadia «alidade_smooth_dark».
+# Bo'sh bo'lsa — tungi uslub oddiy OSM plitalaridan brauzerda yasaladi. Kalit faqat serverda (MAP_DARK_TILE_KEY yoki MAP_TILE_KEY).
+MAP_DARK_TILE_URL = os.getenv("MAP_DARK_TILE_URL", "")
+MAP_DARK_TILE_KEY = os.getenv("MAP_DARK_TILE_KEY", "") or os.getenv("MAP_TILE_KEY", "")
 MAP_ATTRIBUTION = os.getenv("MAP_ATTRIBUTION") or "© OpenStreetMap contributors"
 TILE_CACHE_DIR = os.getenv("TILE_CACHE_DIR") or str(BASE_DIR / "tilecache")
 # Sun'iy yo'ldosh qatlami (uylar, ko'chalar, dalalar ko'rinadi). Sukut: Esri World Imagery + ko'cha nomlari.

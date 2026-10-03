@@ -1173,3 +1173,64 @@ html[data-theme="dark"] { color-scheme: dark; }
 .voice-fill { position: absolute; inset: 0 auto 0 0; background: var(--blue); border-radius: 3px; }
 .voice.me .voice-fill { background: #fff; }
 .voice-time { font-size: 12px; font-variant-numeric: tabular-nums; opacity: .85; min-width: 34px; text-align: right; }
+
+/* ===== Premium xarita (barcha xaritalar): tungi uslub, belgilar, boshqaruv ===== */
+.leaflet-container.night { background: #141c2a; isolation: isolate; }
+/* tungi uslub — o'sha OSM plitalari: teskari kulrang (yozuvlar och rangda o'qiladi) + ustidan to'q ko'k rang aralashtiriladi.
+   MAP_DARK_TILE_URL sozlangan bo'lsa (.native) — provayderning tayyor tungi plitalari, filtrsiz. */
+html .leaflet-container.night:not(.native) .leaflet-tile-pane { filter: url(#avtora-night); }
+.leaflet-container.night .leaflet-control-attribution { background: rgba(10,20,36,.7) !important; color: #7f8ea8 !important; }
+.leaflet-container.night .leaflet-control-attribution a { color: #9db4d8 !important; }
+.map-box.map-big { height: min(68vh, 640px); min-height: 380px; }
+/* telefonda xarita butunlay pastki menyu ustida ko'rinsin (zapravka tugmasi va +/− SOS tugmasi ostida qolmasin) */
+@media (max-width: 1023px) { .map-box.map-big { height: calc(100dvh - 350px - var(--safe-b, 0px)); min-height: 320px; } }
+.leaflet-container .mk-wrap { background: none; border: 0; }
+
+/* boshqaruv: «Hozirgi joy» (o'ng yuqorida), ko'rinish / + / − (o'ng pastda) — shisha uslub */
+.map-here, .map-ctl, .map-chip, .map-layer-menu { background: rgba(12, 22, 40, .86); color: #fff; border: 1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.map-here { position: absolute; top: 12px; right: 12px; z-index: 450; height: 38px; padding: 0 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px;
+  font: 600 13px var(--font); cursor: pointer; }
+.map-here svg { color: #6fb1ff; }
+.map-here.on { background: #2f80ff; border-color: #2f80ff; } .map-here.on svg { color: #fff; }
+.map-here.busy svg { animation: locpulse 1s ease-in-out infinite; }
+.map-ctls { position: absolute; right: 12px; bottom: 26px; z-index: 450; display: flex; flex-direction: column; gap: 8px; }
+.map-ctl { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.map-ctl:active, .map-here:active, .map-chip:active { transform: scale(.95); }
+.map-layer-wrap { position: relative; }
+.map-layer-menu { position: absolute; right: 48px; bottom: 0; border-radius: 14px; padding: 6px; display: grid; gap: 2px; min-width: 150px; }
+.map-layer-menu button { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; border: 0; background: transparent; color: #dce6f5; font: 600 13px var(--font); cursor: pointer; text-align: left; }
+.map-layer-menu button span { flex: 1; }
+.map-layer-menu button.on, .map-layer-menu button:hover { background: rgba(47,128,255,.22); color: #fff; }
+/* pastdagi tugma (masalan «Benzin, propan, metan zapravkalar») */
+.map-chip { position: absolute; left: 12px; bottom: 26px; z-index: 450; height: 46px; max-width: calc(100% - 80px); padding: 0 12px 0 6px; border-radius: 16px;
+  display: inline-flex; align-items: center; gap: 10px; font: 600 13px var(--font); text-decoration: none; }
+.map-chip > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.map-chip-ico { width: 34px; height: 34px; border-radius: 11px; background: #e5484d; display: grid; place-items: center; flex-shrink: 0; }
+/* eski boshqaruv tugmalari endi ishlatilmaydi */
+.map-box > .map-locate, .map-box > .map-layer { display: none; }
+
+/* belgilar */
+.mk { position: relative; display: grid; place-items: center; transition: transform .15s; }
+.mk-ico { width: 36px; height: 36px; border-radius: 50%; background: var(--c); border: 2.5px solid rgba(255,255,255,.95);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45), 0 0 0 5px color-mix(in srgb, var(--c) 28%, transparent); color: #fff; }
+.mk-ico b { font-size: 13px; }
+.mk-ava { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #2f80ff; background: #1b2a44; box-shadow: 0 4px 14px rgba(0,0,0,.5), 0 0 0 4px rgba(47,128,255,.25); }
+.mk-ava { overflow: hidden; }
+.leaflet-container .mk-ava img { width: 100% !important; height: 100% !important; max-width: none !important; border-radius: 50%; object-fit: cover; display: block; }
+.mk-person.off .mk-ava { border-color: #5d6b82; box-shadow: 0 4px 14px rgba(0,0,0,.45); } .mk-person.off img { filter: grayscale(.5); }
+.mk-rate { position: absolute; top: calc(100% + 2px); left: 50%; transform: translateX(-50%); display: inline-block; background: #0f1b2e; color: #fff;
+  font: 700 11px var(--font); padding: 2px 7px; border-radius: 999px; white-space: nowrap; border: 1px solid rgba(255,255,255,.16); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.mk-rate::first-letter { color: #ffc83d; }
+.mk.active { transform: scale(1.18); z-index: 2; }
+.mk.pulse::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 3px solid var(--c, #ee2b2f); animation: mkpulse 1.6s ease-out infinite; }
+@keyframes mkpulse { from { opacity: .9; transform: scale(.9); } to { opacity: 0; transform: scale(1.7); } }
+.fuelmk { width: 32px; height: 32px; }
+.fuelmk .fst { position: absolute; right: -3px; top: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0e1a2e; }
+.fcluster { background: rgba(47,128,255,.92) !important; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(0,0,0,.45), 0 0 0 6px rgba(47,128,255,.22) !important; }
+/* «Siz shu yerdasiz» */
+.me-dot { width: 22px; height: 22px; border-radius: 50%; background: #4d9bff; border: 3px solid #fff; position: relative;
+  box-shadow: 0 0 0 6px rgba(77,155,255,.28), 0 0 26px 10px rgba(77,155,255,.5); }
+.me-dot::after { display: none; }
+.me-dot i { position: absolute; inset: -16px; border-radius: 50%; border: 2px solid rgba(77,155,255,.7); animation: mkpulse 2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mk.pulse::before, .me-dot i { animation: none; } }
