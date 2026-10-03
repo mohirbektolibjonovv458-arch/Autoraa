@@ -9,8 +9,8 @@ export default function LiveMap() {
   const [sel, setSel] = useState<any>(null);
   usePoll(() => { api.get("/admin/map/").then((r) => setD(r.data)); }, 8000, []);
   const pins: Pin[] = [
-    ...d.providers.map((p: any) => ({ id: "p" + p.id, lat: p.lat, lng: p.lng, color: p.role === "evakuator" ? (p.online ? "#12a150" : "#8a96a8") : (p.online ? "#1f6feb" : "#8a96a8"), label: p.role === "evakuator" ? "🚚" : "🔧", popup: <div><b>{p.name}</b><br />{p.role === "evakuator" ? "Evakuator" : "Usta"} · {p.online ? "online" : "offline"}</div> })),
-    ...d.sos.map((s: any) => ({ id: "s" + s.id, lat: s.lat, lng: s.lng, color: "#ee2b2f", label: "!", onClick: () => setSel(s) })),
+    ...d.providers.map((p: any) => ({ id: "p" + p.id, lat: p.lat, lng: p.lng, kind: p.role === "evakuator" ? "evakuator" as const : "usta" as const, online: !!p.online, avatar: p.avatar || null, popup: <div><b>{p.name}</b><br />{p.role === "evakuator" ? "Evakuator" : "Usta"} · {p.online ? "online" : "offline"}</div> })),
+    ...d.sos.map((s: any) => ({ id: "s" + s.id, lat: s.lat, lng: s.lng, kind: "sos" as const, onClick: () => setSel(s) })),
   ];
   const line = sel?.assignee_lat ? [[sel.assignee_lat, sel.assignee_lng], [sel.lat, sel.lng]] as [number, number][] : undefined;
   return (

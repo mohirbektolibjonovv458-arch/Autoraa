@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { LocateFixed } from "lucide-react";
-import { Circle, MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import { Circle, MapContainer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
+import type { Map as LMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useSite } from "../site";
-import { BaseTiles, LayerButton } from "./MapLayers";
+import { BaseTiles, MapChrome } from "./MapLayers";
+import { markerIcon, MarkerSpec, meIcon } from "../mapMarkers";
 import { useToast } from "./ui";
 import { accText, geoErrorText, getPreciseLocation } from "../geo";
 
-export type Pin = { id: string | number; lat: number; lng: number; color?: string; label?: string; title?: string; popup?: React.ReactNode; onClick?: () => void };
-
-const pinIcon = (color = "#ee2b2f", label = "") =>
-  L.divIcon({ className: "", html: `<div class="pin" style="background:${safeColor(color)}"><span>${esc(label)}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -30] });
-/** HTML satrga qo'yiladigan qiymatlarni zararsizlantirish (XSS himoyasi) */
-const esc = (v: any) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as any)[c]);
-const safeColor = (c: any) => (/^#[0-9a-fA-F]{3,8}$/.test(String(c)) ? c : "#1f6feb");
-const meIcon = L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
+/** Xarita belgisi. kind — kategoriya ikonkasi (usta, evakuator, zapravka, do'kon, SOS ...), avatar — rasm, rating — ★ baho.
+ * Eski chaqiruvlar uchun color + label (matn/emoji) ham ishlaydi. */
+export type Pin = MarkerSpec & { id: string | number; lat: number; lng: number; title?: string; popup?: React.ReactNode; onClick?: () => void };
 
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -28,16 +22,18 @@ function ClickPick({ onPick }: { onPick?: (lat: number, lng: number) => void }) 
   return null;
 }
 
-export default function MapView({ center, me, pins = [], line, zoom = 12, className = "map-box", onPick, follow = false, locate = true, accuracy, onLocate }: {
+export default function MapView({ center, me, pins = [], line, zoom = 12, className = "map-box", onPick, follow = false, locate = true, accuracy, onLocate, children }: {
   center: [number, number]; me?: [number, number] | null; pins?: Pin[]; line?: [number, number][]; zoom?: number;
   className?: string; onPick?: (lat: number, lng: number) => void; follow?: boolean; locate?: boolean;
   /** «me» nuqtasining aniqligi (metr) — xaritada doira bilan ko'rsatiladi */
   accuracy?: number | null;
   /** «Mening joylashuvim» bosilganda yangi aniq nuqta (ota komponent o'z holatini yangilaydi) */
   onLocate?: (lat: number, lng: number, accuracy: number) => void;
+  /** xarita ustidagi qo'shimcha elementlar (masalan, pastdagi tugma) */
+  children?: React.ReactNode;
 }) {
-  const site = useSite();
   const toast = useToast();
+  const [map, setMap] = useState<LMap | null>(null);
   const [myPos, setMyPos] = useState<[number, number] | null>(null);
   const [myAcc, setMyAcc] = useState<number | null>(null);
   const [flyK, setFlyK] = useState(0);
@@ -71,23 +67,23 @@ export default function MapView({ center, me, pins = [], line, zoom = 12, classN
   }, [me?.[0], me?.[1]]);
   return (
     <div className={className} style={{ position: "relative" }}>
-      <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
+      <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} scrollWheelZoom zoomControl={false} ref={setMap}>
         <BaseTiles />
         {follow && <Recenter center={center} />}
         <ClickPick onPick={onPick} />
         {me && <Marker position={me} icon={meIcon} title="Siz shu yerdasiz" alt="Siz shu yerdasiz"><Popup>Siz shu yerdasiz</Popup></Marker>}
         {pins.map((p) => (
-          <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon(p.color, p.label)} title={p.title || "Belgi"} alt={p.title || "Belgi"} eventHandlers={p.onClick ? { click: p.onClick } : undefined}>
+          <Marker key={p.id} position={[p.lat, p.lng]} icon={markerIcon(p)} title={p.title || "Belgi"} alt={p.title || "Belgi"} eventHandlers={p.onClick ? { click: p.onClick } : undefined}>
             {p.popup && <Popup>{p.popup}</Popup>}
           </Marker>
         ))}
-        {line && line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#1f6feb", weight: 4, dashArray: "8 8" }} />}
+        {line && line.length > 1 && <Polyline positions={line} pathOptions={{ color: "#4d9bff", weight: 4, dashArray: "8 8" }} />}
         {flyK > 0 && flyTarget && <FlyTo c={flyTarget} k={flyK} />}
-        {pos && acc != null && acc > 15 && acc < 5000 && <Circle center={pos} radius={acc} pathOptions={{ color: "#1f6feb", weight: 1, fillOpacity: 0.08 }} />}
+        {pos && acc != null && acc > 15 && acc < 5000 && <Circle center={pos} radius={acc} pathOptions={{ color: "#4d9bff", weight: 1, fillColor: "#4d9bff", fillOpacity: 0.1 }} />}
         {myPos && <Marker position={myPos} icon={meIcon} title="Siz shu yerdasiz" alt="Siz shu yerdasiz" />}
       </MapContainer>
-      <LayerButton />
-      {locate && <button type="button" className={"map-locate" + (busy ? " busy" : "")} onClick={locateMe} disabled={busy} aria-label="Mening joylashuvim" title={busy ? "Aniqlanmoqda…" : "Mening joylashuvim"}><LocateFixed size={20} /></button>}
+      <MapChrome map={map} onLocate={locateMe} locating={busy} showLocate={locate} />
+      {children}
     </div>
   );
 }

@@ -112,6 +112,9 @@ Karta raqami va narxni admin panel → Sayt sozlamalari'dan o'zgartirasiz. Premi
 - **Joylashuv maxfiyligi:** foydalanuvchi joylashuvi faqat masofani hisoblash uchun so'rovda yuboriladi — bazada saqlanmaydi va boshqalarga ko'rsatilmaydi.
 - **Qo'lda yangilash:** admin panel → Yoqilg'i shoxobchalari → «Yangilash», yoki `python manage.py import_fuel_stations`.
 
+**Xarita dizayni (barcha xaritalar):** sukut bo'yicha **tungi** uslub (to'q ko'k), tanlov: 🌙 Tungi / ☀️ Kunduzgi / 🛰 Sputnik (eslab qolinadi). Ustalar — rasmi va ★ reytingi bilan, rasm bo'lmasa kalit ikonkasi; offline — kulrang; evakuator, zapravka, SOS — rangli ikonkalar; «Hozirgi joy», +/−, pulslanuvchi «men shu yerdaman» nuqtasi.
+Tungi uslub oddiy OSM plitalaridan brauzerda yasaladi (qo'shimcha xarajat yo'q). Provayderning tayyor tungi plitalarini ulash mumkin: `.env` → `MAP_DARK_TILE_URL=https://api.maptiler.com/maps/streets-v2-dark/256/{z}/{x}/{y}.png?key={key}` va `MAP_DARK_TILE_KEY=...` (kalit faqat serverda).
+
 **Agar server Overpass'ga ulana olmasa** (firewall va h.k.):
 1. https://overpass-turbo.eu saytiga kiring.
 2. Quyidagi so'rovni yozing va **Export → raw data (JSON)** qiling:

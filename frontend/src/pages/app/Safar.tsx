@@ -8,7 +8,8 @@ import {
   ArrowLeft, Bell, BellOff, Car, Check, Crosshair, Flag, Fuel, History, LocateFixed, MapPin, Navigation, Search, Square, Volume2, VolumeX, Wrench, X,
 } from "lucide-react";
 import { api, errMsg } from "../../api";
-import { BaseTiles, LayerButton } from "../../components/MapLayers";
+import { BaseTiles, MapChrome } from "../../components/MapLayers";
+import { markerIcon, meIcon } from "../../mapMarkers";
 import MapView from "../../components/MapView";
 import { Modal, Spinner, useToast } from "../../components/ui";
 import { getLang } from "../../i18n";
@@ -271,16 +272,16 @@ function Active({ trip, onFinished }: { trip: any; onFinished: (s: any) => void 
   };
   const fuelStop = async () => { try { const r = await api.post(`/trips/${trip.id}/fuel-stop/`); setStops(r.data.fuel_stops); toast("Belgilandi — yo'lingiz bexatar bo'lsin", "success"); } catch (e) { toast(errMsg(e), "error"); } };
   const pref = dash?.next?.[trip.fuel];
+  const [map, setMap] = useState<L.Map | null>(null);
 
   return (
     <div className="safar-live">
       <div className="sl-map">
-        <MapContainer center={[trip.start.lat, trip.start.lng]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+        <MapContainer center={[trip.start.lat, trip.start.lng]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false} ref={setMap}>
           <BaseTiles />
           <TripLayer trip={trip} me={me} follow={follow} onUserMove={() => setFollow(false)} pref={trip.fuel} passedKm={dash?.progress_km || 0} />
         </MapContainer>
-        <LayerButton />
-        <button className={"map-locate" + (follow ? " on" : "")} onClick={() => setFollow(true)} aria-label="Meni kuzatish"><Crosshair size={20} /></button>
+        <MapChrome map={map} onLocate={() => setFollow(true)} locateLabel="Meni kuzatish" locateActive={follow} />
         <div className="sl-top">
           <div className="sl-title" translate="no"><b>{trip.start.name.split(",")[0]} → {trip.dest.name.split(",")[0]}</b><span>{dash?.percent ?? 0}%</span></div>
           <div className="sl-prog"><i style={{ width: `${dash?.percent ?? 0}%` }} /></div>
@@ -335,9 +336,8 @@ const stIcon = (f: string, big: boolean, passed: boolean) => {
   const k = `${f}${big}${passed}`;
   return (iconCache[k] ||= L.divIcon({ className: "", html: `<div class="tpin${big ? " big" : ""}${passed ? " passed" : ""}" style="background:${color(f)}">⛽</div>`, iconSize: big ? [32, 32] : [24, 24], iconAnchor: big ? [16, 16] : [12, 12] }));
 };
-const svcIcon = (k: string) => (iconCache["s" + k] ||= L.divIcon({ className: "", html: `<div class="tpin svc">${k === "usta" ? "🔧" : "🚛"}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }));
+const svcIcon = (k: string) => markerIcon({ kind: k === "usta" ? "usta" : "evakuator" });
 const endIcon = (a: boolean) => (iconCache["e" + a] ||= L.divIcon({ className: "", html: `<div class="tend ${a ? "a" : "b"}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }));
-const meIcon = L.divIcon({ className: "", html: `<div class="me-dot"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] });
 
 function TripLayer({ trip, me, follow, onUserMove, pref, passedKm }: any) {
   const map = useMap();

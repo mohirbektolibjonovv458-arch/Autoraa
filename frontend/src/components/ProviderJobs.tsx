@@ -42,7 +42,7 @@ export default function ProviderJobs({ onChange }: { onChange?: () => void }) {
       {active.map((s) => (
         <div key={s.id} className="card col gap-12" style={{ borderColor: "var(--red)" }}>
           <div className="row between"><b>Faol buyurtma · {s.kind_label}</b><StatusBadge status={s.status} label={s.status_label} /></div>
-          <MapView center={[s.lat, s.lng]} me={geo.real ? [geo.lat, geo.lng] : null} accuracy={geo.accuracy} onLocate={geo.set} pins={[{ id: s.id, lat: s.lat, lng: s.lng, color: "#ee2b2f", label: "!" }]} line={geo.real ? [[geo.lat, geo.lng], [s.lat, s.lng]] : undefined} zoom={13} className="map-box" />
+          <MapView center={[s.lat, s.lng]} me={geo.real ? [geo.lat, geo.lng] : null} accuracy={geo.accuracy} onLocate={geo.set} pins={[{ id: s.id, lat: s.lat, lng: s.lng, kind: "sos", title: "Mijoz (SOS)" }]} line={geo.real ? [[geo.lat, geo.lng], [s.lat, s.lng]] : undefined} zoom={13} className="map-box" />
           <div className="row gap-12 wrap">
             <div className="grow"><b>{s.client.full_name}</b><div className="small muted">{s.client.phone}</div><div className="small row gap-4 mt-4"><MapPin size={14} />{s.address || `${s.lat.toFixed(5)}, ${s.lng.toFixed(5)}`}</div>
               {s.note && <div className="small mt-4">«{s.note}»</div>}{s.vehicle_title && <div className="xs muted">{s.vehicle_title}</div>}</div>

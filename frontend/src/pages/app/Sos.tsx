@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Cpu, LocateFixed, MapPin, MessageCircle, Phone, Share2, Truck, Wrench } from "lucide-react";
 import { api, errMsg } from "../../api";
-import MapView from "../../components/MapView";
+import MapView, { Pin } from "../../components/MapView";
 import { useSite } from "../../site";
 import { Spinner, useToast } from "../../components/ui";
 import { money, TASHKENT, useGeo, usePoll } from "../../utils";
@@ -119,7 +119,7 @@ function Tracking({ initial, onDone }: { initial: any; onDone: () => void }) {
     if (navigator.share) { try { await navigator.share({ title: "SOS", text }); } catch { /* bekor */ } }
     else window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
   };
-  const pins = a?.lat ? [{ id: "a", lat: a.lat, lng: a.lng, color: "#1f6feb", label: "🚚", title: "Yordamchi" }] : [];
+  const pins: Pin[] = a?.lat ? [{ id: "a", lat: a.lat, lng: a.lng, kind: a.role === "usta" ? "usta" : "evakuator", avatar: a.avatar || null, title: "Yordamchi" }] : [];
   const closed = !ACTIVE.includes(s.status);
 
   return (

@@ -187,7 +187,8 @@ class LiveMapView(AdminBase):
         providers = User.objects.filter(role__in=["usta", "evakuator"], lat__isnull=False)
         sos = SOSRequest.objects.filter(status__in=["searching", "accepted", "on_the_way", "arrived"]).select_related("user", "assignee")
         return Response({
-            "providers": [{"id": u.id, "name": u.full_name, "role": u.role, "lat": u.lat, "lng": u.lng, "online": u.online_now} for u in providers],
+            "providers": [{"id": u.id, "name": u.full_name, "role": u.role, "lat": u.lat, "lng": u.lng, "online": u.online_now,
+                           "avatar": u.avatar.url if u.avatar else None} for u in providers],
             "sos": [{"id": s.id, "kind": s.get_kind_display(), "status": s.status, "status_label": s.get_status_display(),
                      "lat": s.lat, "lng": s.lng, "address": s.address, "client": s.user.full_name,
                      "assignee": s.assignee.full_name if s.assignee else None,
