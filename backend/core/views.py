@@ -23,7 +23,9 @@ class PublicSettingsView(APIView):
                          "map_attribution": settings.MAP_ATTRIBUTION,
                          # Android ilova fayli (frontend/public/avtora.apk yoki APK_URL) — bo'lsa «O'rnatish» darhol shuni yuklaydi
                          "apk_url": settings.APK_URL or ("/avtora.apk" if (settings.FRONTEND_DIR / "avtora.apk").exists() else ""),
-                         "sat_enabled": settings.SAT_ENABLED, "sat_attribution": settings.SAT_ATTRIBUTION})
+                         "sat_enabled": settings.SAT_ENABLED, "sat_attribution": settings.SAT_ATTRIBUTION,
+                         # «Google bilan kirish» — ochiq Client ID (maxfiy emas); bo'sh bo'lsa tugma ko'rinmaydi
+                         "google_client_id": settings.GOOGLE_CLIENT_IDS[0] if settings.GOOGLE_CLIENT_IDS else ""})
 
 
 class PublicStatsView(APIView):

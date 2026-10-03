@@ -36,6 +36,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=60, blank=True)
     last_name = models.CharField(max_length=60, blank=True)
     email = models.EmailField(blank=True)
+    google_sub = models.CharField(max_length=64, unique=True, null=True, blank=True)  # «Google bilan kirish» — Google hisob ID
     role = models.CharField(max_length=12, choices=ROLE_CHOICES, default=ROLE_USER)
     avatar = models.ImageField(upload_to=UploadTo("avatars"), validators=[validate_image], blank=True, null=True)
     city = models.CharField(max_length=80, default="Toshkent")

@@ -179,7 +179,8 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+# «Google bilan kirish» oynasi (popup) natijani sahifaga qaytara olishi uchun
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 if os.getenv("HTTPS", "0") == "1":  # sayt HTTPS (domen + sertifikat) orqali ishlaganda
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
@@ -218,13 +219,15 @@ CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://loc
 CORS_ALLOW_CREDENTIALS = False
 
 # Content-Security-Policy: sahifaga begona skript kiritilsa ham ishlamaydi (XSS himoyasi)
+# Google bilan kirish (Google Identity Services): skript, tugma (iframe) va oyna faqat accounts.google.com dan
 CSP_HEADER = "; ".join([
     "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self' https://accounts.google.com/gsi/client",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",  # xarita plitalari ham o'z serverimiz orqali (/api/map/tiles/)
-    "connect-src 'self'",
+    "connect-src 'self' https://accounts.google.com/gsi/",
+    "frame-src https://accounts.google.com/gsi/",
     "manifest-src 'self'",
     "worker-src 'self'",
     "frame-ancestors 'none'",
@@ -232,7 +235,12 @@ CSP_HEADER = "; ".join([
     "base-uri 'self'",
     "form-action 'self'",
 ])
-PERMISSIONS_POLICY = "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+PERMISSIONS_POLICY = ("geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=(), "
+                      'identity-credentials-get=(self "https://accounts.google.com")')  # Google bilan kirish (FedCM)
+
+# --- Google bilan kirish: Google Cloud Console → Credentials → OAuth client ID (Web application).
+# Bir nechta bo'lsa vergul bilan. Client secret KERAK EMAS. Bo'sh bo'lsa — tugma ko'rinmaydi.
+GOOGLE_CLIENT_IDS = [x.strip() for x in os.getenv("GOOGLE_CLIENT_ID", "").split(",") if x.strip()]
 
 # Saytning ochiq manzili (Telegram xabarlaridagi havolalar uchun), masalan https://avtora.uz
 SITE_URL = os.getenv("SITE_URL", "") or (f"https://{DOMAIN}" if DOMAIN else "")

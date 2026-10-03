@@ -1130,3 +1130,14 @@ html[data-theme="dark"] { color-scheme: dark; }
 .push-help summary { cursor: pointer; }
 .push-help-brand { margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: var(--bg-soft); }
 .push-help-brand ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* «Google bilan davom etish» — rasmiy Google tugmasi konteynerga moslashadi (200–400 px) */
+.google-btn { position: relative; width: 100%; min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.google-btn-slot { display: flex; justify-content: center; width: 100%; max-width: 400px; color-scheme: light; }
+.google-btn-slot iframe { margin: 0 auto !important; }
+.google-btn-skel { position: absolute; inset: 0 auto auto 50%; transform: translateX(-50%); width: min(100%, 400px); height: 44px; border-radius: 999px; background: rgba(255,255,255,.08); animation: gpulse 1.2s ease-in-out infinite; }
+@keyframes gpulse { 50% { opacity: .45; } }
+.or-divider { display: flex; align-items: center; gap: 12px; color: #6f7d95; font-size: 13px; font-weight: 600; }
+.or-divider::before, .or-divider::after { content: ""; flex: 1; height: 1px; background: #22345a; }
+.google-linked { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #0f1d33; border: 1px solid #22345a; color: #c6d0e0; font-size: 13px; }
+.google-linked b { color: #fff; }

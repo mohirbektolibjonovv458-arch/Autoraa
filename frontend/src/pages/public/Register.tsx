@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Truck, User, Wrench } from "lucide-react";
-import { api } from "../../api";
+import { api, errMsg } from "../../api";
 import { homeFor, useAuth } from "../../auth";
 import { safeNext } from "../../safeNext";
 import PhoneCode from "../../components/PhoneCode";
-import { Logo } from "../../components/ui";
+import { Logo, useToast } from "../../components/ui";
+import GoogleButton, { OrDivider } from "../../components/GoogleButton";
+import { clearGoogle, GooglePending, loadGoogle, saveGoogle } from "../../googleAuth";
+import { useSite } from "../../site";
 import { SPECIALTIES } from "../../utils";
 import LangSwitch from "../../components/LangSwitch";
 
@@ -21,9 +24,34 @@ export default function Register() {
   const [sp] = useSearchParams();
   const [role, setRole] = useState(sp.get("role") || "user");
   const [step, setStep] = useState(1);
-  const [f, setF] = useState<any>({ first_name: "", last_name: "", specialties: [], experience_years: "", address: "", truck_model: "", plate: "", car_brand: "", car_model: "", car_year: "" });
+  // «Google bilan» boshlangan bo'lsa (Kirish sahifasidan ham) — ism/familiya Google'dan to'ldiriladi
+  const [g, setG] = useState<GooglePending | null>(() => loadGoogle());
+  const [f, setF] = useState<any>(() => ({ first_name: g?.first_name || "", last_name: g?.last_name || "", specialties: [], experience_years: "", address: "", truck_model: "", plate: "", car_brand: "", car_model: "", car_year: "" }));
   const [agree, setAgree] = useState(false);
+  const [gBusy, setGBusy] = useState(false);
+  const toast = useToast();
+  const gOn = !!useSite().google_client_id;
   if (user) return <Navigate to={homeFor(user.role)} replace />;
+
+  const onGoogle = async (credential: string) => {
+    setGBusy(true);
+    try {
+      const r = await api.post("/auth/google/", { credential });
+      if (r.data.status === "ok") {  // bu Google hisob allaqachon ulangan — shunchaki kiradi
+        clearGoogle(); login(r.data);
+        nav(safeNext(sp.get("next")) || homeFor(r.data.user.role), { replace: true });
+        return;
+      }
+      const d = { ticket: r.data.ticket, email: r.data.email, first_name: r.data.first_name, last_name: r.data.last_name };
+      saveGoogle(d); setG({ ...d, at: Date.now() });
+      setF((x: any) => ({ ...x, first_name: x.first_name || d.first_name, last_name: x.last_name || d.last_name }));
+      setStep(2);
+    } catch (e) { toast(errMsg(e), "error"); }
+    finally { setGBusy(false); }
+  };
+  const gChip = g && (
+    <div className="google-linked"><span>✓</span><span>Google: <b>{g.email}</b> — ro'yxatdan o'tgach keyingi safar bir bosishda kirasiz.</span></div>
+  );
 
   const set = (k: string, v: any) => setF({ ...f, [k]: v });
   const toggleSpec = (s: string) => set("specialties", f.specialties.includes(s) ? f.specialties.filter((x: string) => x !== s) : [...f.specialties, s]);
@@ -34,7 +62,9 @@ export default function Register() {
     if (role === "usta") Object.assign(body, { specialties: f.specialties, experience_years: f.experience_years || 0, address: f.address });
     if (role === "evakuator") Object.assign(body, { truck_model: f.truck_model, plate: f.plate });
     if (role === "user" && f.car_brand) body.vehicle = { brand: f.car_brand, model: f.car_model, year: f.car_year || undefined };
+    if (g) body.google_ticket = g.ticket;
     const r = await api.post("/auth/register/", body);
+    clearGoogle();
     login(r.data);
     nav(safeNext(sp.get("next")) || homeFor(r.data.user.role), { replace: true });
   };
@@ -59,12 +89,20 @@ export default function Register() {
             </div>
             {role === "usta" && <div className="alert" style={{ background: "#132a50", color: "#b9d2ff" }}>Ustalar Premium (oyiga 40 000 so'm) orqali o'z zapchast do'konini ochishi mumkin.</div>}
             <button className="btn btn-red btn-lg btn-block" onClick={() => setStep(2)}>Davom etish</button>
+            {gOn && !g && (
+              <>
+                <OrDivider />
+                {gBusy ? <div className="center small" style={{ color: "#8e9bb2" }}>Google tekshirilmoqda…</div> : <GoogleButton onCredential={onGoogle} text="signup_with" />}
+              </>
+            )}
+            {gChip}
           </>
         )}
 
         {step === 2 && (
           <div className="col gap-16 dark-form">
             <h1>{ROLES.find((r) => r.key === role)?.title} ma'lumotlari</h1>
+            {gChip}
             <div className="grid g2">
               <label className="field"><span>Ism</span><input className="input" value={f.first_name} onChange={(e) => set("first_name", e.target.value)} placeholder="Ism" /></label>
               <label className="field"><span>Familiya</span><input className="input" value={f.last_name} onChange={(e) => set("last_name", e.target.value)} placeholder="Familiya" /></label>
@@ -108,6 +146,7 @@ export default function Register() {
         {step === 3 && (
           <>
             <div><h1>Telefonni tasdiqlang</h1><p style={{ color: "#8e9bb2" }} className="mt-4">4 xonali kod Telegram botimiz orqali yuboriladi.</p></div>
+            {g && <p className="xs" style={{ color: "#8e9bb2", marginTop: -12 }}>Telefon bir marta tasdiqlanadi: ustalar va evakuatorlar siz bilan shu raqam orqali bog'lanadi.</p>}
             <label className="row gap-8 small" style={{ color: "#aab5c9" }}>
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> <span>Men <Link to="/terms" target="_blank" style={{ color: "#ff8a4c", textDecoration: "underline" }}>foydalanish shartlari va maxfiylik siyosati</Link>ga roziman</span>
             </label>
