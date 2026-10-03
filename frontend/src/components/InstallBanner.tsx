@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { quickInstall } from "./InstallFlow";
 import { dismissInstall, dismissedRecently, isMobile, isNarrow, isStandalone, markedInstalled, onPwaChange } from "../pwa";
 
-const HIDDEN_ON = [/^\/$/, /^\/login/, /^\/register/, /^\/admin/]; // bosh ekranda o'rnatish tugmasi allaqachon bor
+const HIDDEN_ON = [/^\/$/, /^\/login/, /^\/register/, /^\/admin/, /^\/app\/chat\/\d+/]; // bosh ekranda o'rnatish tugmasi allaqachon bor; chat oynasida — yozish qatorini to'smasin
 const SESSION_KEY = "ah_install_banner_seen";
 
 /**

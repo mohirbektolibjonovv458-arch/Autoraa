@@ -51,3 +51,56 @@ def check_image(f):
     finally:
         f.seek(0)
     return None
+
+
+# --- Ovozli xabarlar (chat) ---
+MAX_AUDIO_MB = 5
+MAX_AUDIO_SECONDS = 180
+# fayl boshidagi «sehrli baytlar» bo'yicha haqiqiy format (kengaytma yoki brauzer aytgan turga ishonilmaydi)
+AUDIO_FORMATS = {".webm": "audio/webm", ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".mp3": "audio/mpeg", ".wav": "audio/wav", ".aac": "audio/aac"}
+
+
+def sniff_audio(head):
+    if head[:4] == b"\x1aE\xdf\xa3":
+        return ".webm"
+    if head[:4] == b"OggS":
+        return ".ogg"
+    if head[4:8] == b"ftyp":
+        return ".m4a"
+    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+        return ".wav"
+    if head[:3] == b"ID3" or head[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+        return ".mp3"
+    if head[:2] in (b"\xff\xf1", b"\xff\xf9"):
+        return ".aac"
+    return None
+
+
+def check_audio(f):
+    """Ovozli xabar: hajm va haqiqiy audio format. Qaytaradi: (kengaytma, None) yoki (None, xato matni)."""
+    if not f:
+        return None, None
+    if f.size > MAX_AUDIO_MB * 1024 * 1024:
+        return None, f"Ovozli xabar {MAX_AUDIO_MB} MB dan oshmasligi kerak."
+    head = f.read(16)
+    f.seek(0)
+    ext = sniff_audio(head)
+    if not ext:
+        return None, "Fayl ovozli xabar emas yoki format qo'llab-quvvatlanmaydi."
+    return ext, None
+
+
+@deconstructible
+class AudioUploadTo:
+    """Ovozli xabarlar: tasodifiy nom, kengaytma — faylning haqiqiy formati bo'yicha."""
+    def __init__(self, folder):
+        self.folder = folder
+
+    def __call__(self, instance, filename):
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in AUDIO_FORMATS:
+            ext = ".webm"
+        return f"{self.folder}/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}"
+
+    def __eq__(self, other):
+        return isinstance(other, AudioUploadTo) and other.folder == self.folder
