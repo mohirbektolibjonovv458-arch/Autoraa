@@ -178,6 +178,9 @@ class RegisterView(APIView):
                 year = None
             Vehicle.objects.create(owner=user, brand=str(car.get("brand"))[:40], model=str(car.get("model") or "")[:60],
                                    year=year, plate=str(car.get("plate") or "")[:15], is_primary=True)
+        if d.get("google_ticket"):
+            from .google import attach_google
+            attach_google(user, d.get("google_ticket"))  # «Google bilan» boshlangan bo'lsa — keyingi safar bir bosishda kiradi
         if link:
             send_auth_message(link.chat_id, f"✅ Tabriklaymiz, {first_name}! Siz Avtora'da ro'yxatdan o'tdingiz.")
         return Response(tokens_for(user), status=201)
@@ -206,7 +209,34 @@ class LoginView(APIView):
             if link:
                 user.telegram_chat_id = link.chat_id
                 user.save(update_fields=["telegram_chat_id"])
+        if request.data.get("google_ticket"):
+            from .google import attach_google
+            attach_google(user, request.data.get("google_ticket"))  # mavjud hisobga Google'ni ulash
         return Response(tokens_for(user))
+
+
+class GoogleAuthView(APIView):
+    """«Google bilan davom etish». Google hisob ulangan bo'lsa — darhol kirish (tokenlar);
+    aks holda — ro'yxatdan o'tishni davom ettirish uchun ism/email va qisqa muddatli ticket."""
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth_verify"
+
+    def post(self, request):
+        from .google import GoogleAuthError, make_ticket, verify_id_token
+        try:
+            info = verify_id_token(request.data.get("credential"))
+        except GoogleAuthError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        user = User.objects.filter(google_sub=info["sub"]).first()
+        if user:
+            if not user.is_active:
+                return Response({"detail": "Hisobingiz bloklangan. Qo'llab-quvvatlash xizmatiga yozing."}, status=403)
+            if user.role == "admin" or user.is_staff or user.is_superuser:
+                return Response({"detail": "Bu hisob uchun admin panel orqali kiring."}, status=403)
+            return Response({"status": "ok", **tokens_for(user)})
+        return Response({"status": "need_phone", "ticket": make_ticket(info), "email": info["email"],
+                         "first_name": info["first_name"], "last_name": info["last_name"]})
 
 
 def client_ip(request):

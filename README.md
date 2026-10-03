@@ -266,6 +266,27 @@ Loyiha ildizida `Dockerfile` va `railway.json` bor — Railway ularni o'zi topad
 
 ---
 
+## Google bilan kirish
+
+Kirish va Ro'yxatdan o'tish sahifalarida «Google bilan davom etish» tugmasi (Google'ning rasmiy tugmasi, telefon va kompyuter ekraniga moslashadi).
+
+- **Birinchi marta:** Google'dan ism, familiya va email olinadi → rol tanlanadi → telefon bir marta Telegram kodi bilan tasdiqlanadi (ustalar/evakuatorlar mijoz bilan shu raqam orqali bog'lanadi) → Google hisob shu akkauntga ulanadi.
+- **Keyingi safar:** bir bosishda kiradi, kod kerak emas.
+- **Eski (telefon bilan ochilgan) hisob:** Google bilan bosing → telefon bilan bir marta kiring → Google ulanadi.
+- Server Google tokenini Google'ning ochiq kalitlari bilan tekshiradi (imzo, Client ID, muddat, tasdiqlangan email). Admin hisobi Google bilan kira olmaydi.
+
+**Sozlash (bir marta, 5 daqiqa):**
+1. https://console.cloud.google.com → yangi loyiha (masalan «Avtora»).
+2. **APIs & Services → OAuth consent screen**: User type — *External*; ilova nomi «Avtora», email; **Publish app** (aks holda faqat test foydalanuvchilar kira oladi).
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID** → *Web application*.
+4. **Authorized JavaScript origins**: `https://SIZNING-DOMEN` (masalan `https://autoraa-production.up.railway.app`); lokal sinov uchun `http://localhost:8000` ham. *Redirect URI kerak emas.*
+5. Hosil bo'lgan **Client ID** ni (`...apps.googleusercontent.com`) Railway Variables'ga `GOOGLE_CLIENT_ID` sifatida qo'shing. **Client secret kerak emas.**
+6. Deploy → Kirish sahifasida tugma paydo bo'ladi. `GOOGLE_CLIENT_ID` bo'sh bo'lsa tugma ko'rinmaydi, telefon orqali kirish odatdagidek ishlaydi.
+
+Telegram/Instagram ichidagi brauzerda Google kirishni o'zi bloklaydi — sahifa foydalanuvchiga Chrome/Safari'da ochishni aytadi.
+
+Sinov: `e2e/google/run.sh` (brauzerda 13 ta tekshiruv).
+
 ## Push bildirishnomalar
 
 Ilova yopiq bo'lsa ham telefon yoki kompyuterning bildirishnoma paneliga xabar keladi (Web Push, VAPID standarti). Firebase shart emas: Chrome/Android xabarlarni o'zi FCM orqali, Firefox Mozilla orqali, iPhone Apple orqali yetkazadi.

@@ -7,6 +7,7 @@ urlpatterns = [
     path("telegram-status/", views.TelegramStatusView.as_view()),
     path("register/", views.RegisterView.as_view()),
     path("login/", views.LoginView.as_view()),
+    path("google/", views.GoogleAuthView.as_view()),
     path("admin-login/", views.AdminLoginView.as_view()),
     path("refresh/", views.SafeRefreshView.as_view()),
     path("logout/", views.LogoutView.as_view()),
