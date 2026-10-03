@@ -1234,3 +1234,47 @@ html .leaflet-container.night:not(.native) .leaflet-tile-pane { filter: url(#avt
 .me-dot::after { display: none; }
 .me-dot i { position: absolute; inset: -16px; border-radius: 50%; border: 2px solid rgba(77,155,255,.7); animation: mkpulse 2s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .mk.pulse::before, .me-dot i { animation: none; } }
+
+/* ===== Ustalar hikoyalari (story) ===== */
+.stories { display: grid; gap: 10px; min-width: 0; }
+.stories-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.stories-row { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 6px; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.stories-row::-webkit-scrollbar { display: none; }
+.story-tile { flex: 0 0 auto; width: 76px; display: grid; justify-items: center; gap: 4px; background: none; border: 0; padding: 0; cursor: pointer; scroll-snap-align: start; color: var(--ink); }
+.story-ring { width: 70px; height: 70px; border-radius: 50%; padding: 3px; display: grid; place-items: center;
+  background: conic-gradient(from 210deg, #ff7a2f, #ee2b2f, #c13584, #7c4dff, #2f80ff, #ff7a2f); }
+.story-ring.seen { background: var(--line); }
+.story-ring.own { background: conic-gradient(from 210deg, #ff7a2f, #ffb84d, #ff7a2f); }
+.story-ring .avatar { width: 100%; height: 100%; border: 3px solid var(--bg, #fff); font-size: 20px; }
+.story-ring.add { background: none; border: 2px dashed var(--line); padding: 0; }
+.story-add { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue); }
+.story-name { font-size: 11.5px; font-weight: 700; max-width: 78px; line-height: 1.2; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.story-time { font-size: 10px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.story-time i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.story-time i.on { background: var(--green); }
+/* to'liq ekranli ko'rish */
+.story-viewer { position: fixed; inset: 0; z-index: 3000; background: #05080f; display: grid; place-items: center; touch-action: none; }
+.sv-frame { position: relative; width: min(100vw, calc(100dvh * 9 / 16)); height: 100dvh; display: flex; flex-direction: column; background: #000; overflow: hidden; }
+@media (min-width: 700px) { .sv-frame { height: min(100dvh, 860px); border-radius: 18px; } }
+.sv-bars { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); left: 10px; right: 10px; display: flex; gap: 4px; z-index: 3; }
+.sv-bars span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.3); overflow: hidden; }
+.sv-bars i { display: block; height: 100%; background: #fff; }
+.sv-head { position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: 10px; right: 6px; display: flex; align-items: center; gap: 10px; z-index: 3; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.sv-head .avatar { width: 38px; height: 38px; border: 2px solid rgba(255,255,255,.8); }
+.sv-head .xs { color: rgba(255,255,255,.8); }
+.sv-x { width: 40px; height: 40px; border: 0; background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; }
+.sv-media { flex: 1; position: relative; display: grid; place-items: center; user-select: none; -webkit-user-select: none; }
+.sv-media img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-touch-callout: none; }
+.sv-spin { position: absolute; color: #fff; }
+.sv-caption { position: absolute; left: 12px; right: 12px; bottom: 14px; padding: 10px 14px; border-radius: 14px; background: rgba(0,0,0,.55);
+  color: #fff; font-size: 15px; font-weight: 600; text-align: center; white-space: pre-wrap; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.sv-foot { display: flex; align-items: center; gap: 10px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px)); background: #000; color: #fff; }
+.sv-meta { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: rgba(255,255,255,.85); }
+.sv-btn { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08); color: #fff; font: 600 13px var(--font); cursor: pointer; }
+.sv-btn.danger { color: #ff8a8a; }
+.sv-btn.wide { flex: 1; justify-content: center; }
+/* joylash oynasi */
+.sc-preview { position: relative; height: min(46vh, 420px); border-radius: 16px; overflow: hidden; background: #0b1424; display: grid; place-items: center; }
+.sc-preview img { width: 100%; height: 100%; object-fit: contain; }
+.sc-empty { display: grid; justify-items: center; gap: 8px; color: #9fb0c8; text-align: center; padding: 20px; }

@@ -68,4 +68,6 @@ def premium_reminders():
 
 
 def run_all():
+    from masters.stories import purge_expired_stories
+    purge_expired_stories()  # 24 soatlik hikoyalar — fayli bilan o'chiriladi
     return document_reminders() + booking_reminders() + premium_reminders()

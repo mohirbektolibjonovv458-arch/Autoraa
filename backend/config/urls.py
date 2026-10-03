@@ -42,7 +42,7 @@ def media_serve(request, path):
     """Ochiq media fayllar. To'lov cheklari bu yerdan berilmaydi (faqat imzoli havola orqali)."""
     from django.http import Http404
     # to'lov cheklari va chat rasmlari shaxsiy — faqat imzoli havola orqali
-    if path.startswith(("receipts/", "chat/")) or ".." in path:
+    if path.startswith(("receipts/", "chat/", "chat-audio/")) or ".." in path:
         raise Http404
     resp = serve(request, path, document_root=settings.MEDIA_ROOT)
     resp["Cache-Control"] = "public, max-age=604800"

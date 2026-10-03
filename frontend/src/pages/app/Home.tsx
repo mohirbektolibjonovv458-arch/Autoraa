@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StoriesBar from "../../components/Stories";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ChevronRight, Fuel, Cpu, FileText, MapPin, Package, Siren, Truck, Wallet, Wrench , Navigation } from "lucide-react";
 import { api } from "../../api";
@@ -69,6 +70,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <StoriesBar />
 
       {sum && (sum.documents.length > 0 || sum.service_due.length > 0) && (
         <div className="col gap-8">

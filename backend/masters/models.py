@@ -109,3 +109,29 @@ class ReviewPhoto(models.Model):
 
     class Meta:
         ordering = ["id"]
+
+
+class Story(models.Model):
+    """Usta hikoyasi (story): rasm + qisqa matn. 24 soatdan keyin ko'rinmaydi va fon jarayoni uni (fayli bilan) o'chiradi."""
+    LIFETIME_HOURS = 24
+    MAX_ACTIVE = 10  # bir ustada bir vaqtda ko'pi bilan
+    master = models.ForeignKey(MasterProfile, on_delete=models.CASCADE, related_name="stories")
+    image = models.ImageField(upload_to=UploadTo("stories"), validators=[validate_image])
+    caption = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+
+class StoryView(models.Model):
+    """Kim ko'rgan — halqa kulrang bo'lishi va usta «N kishi ko'rdi» ni bilishi uchun (bir kishi — bir marta)."""
+    story = models.ForeignKey(Story, on_delete=models.CASCADE, related_name="views")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("story", "user")

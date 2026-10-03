@@ -122,3 +122,9 @@ class ChatTests(TestCase):
         self.send(self.a, audio=SimpleUploadedFile("v.webm", WEBM, "audio/webm"))
         n = Notification.objects.get(user=self.u, kind="chat")
         self.assertIn("🎤 Ovozli xabar", n.body); self.assertEqual(n.push_body, "Sizga yangi xabar keldi")
+
+    def test_voice_file_not_public_via_media(self):
+        r = self.send(self.a, audio=SimpleUploadedFile("v.webm", WEBM, "audio/webm"))
+        name = Message.objects.get(pk=r.data["id"]).audio.name
+        self.assertTrue(name.startswith("chat-audio/"))
+        self.assertEqual(APIClient().get("/media/" + name).status_code, 404)  # faqat imzoli havola orqali
