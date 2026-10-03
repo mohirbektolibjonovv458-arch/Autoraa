@@ -1,8 +1,11 @@
 from django.urls import path
 
-from . import views
+from . import stories, views
 
 urlpatterns = [
+    path("stories/", stories.StoryListView.as_view()),
+    path("stories/<int:pk>/", stories.StoryDetailView.as_view()),
+    path("stories/<int:pk>/view/", stories.StoryViewMark.as_view()),
     path("", views.MasterListView.as_view()),
     path("categories/", views.CategoriesView.as_view()),
     path("favorites/", views.FavoritesView.as_view()),

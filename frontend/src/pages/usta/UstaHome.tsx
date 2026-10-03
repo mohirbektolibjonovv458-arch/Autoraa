@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StoriesBar from "../../components/Stories";
 import { Link } from "react-router-dom";
 import { CalendarCheck, Clock, Crown, Siren, Store, Wallet } from "lucide-react";
 import { api } from "../../api";
@@ -29,6 +30,7 @@ export default function UstaHome() {
         {user?.is_premium ? <span className="badge amber"><Crown size={12} />Premium</span> : <Link to="/app/usta/premium" className="btn btn-sm btn-soft"><Crown size={14} />Premium</Link>}
       </div>
 
+      <StoriesBar />
       <div className="grid g4">
         <div className="stat"><div className="ico"><CalendarCheck size={18} /></div><div className="label mt-8">Bugungi buyurtmalar</div><div className="value">{st?.today ?? "—"}</div></div>
         <div className="stat"><div className="ico" style={{ background: "var(--amber-soft)", color: "#b37400" }}><Clock size={18} /></div><div className="label mt-8">Kutilmoqda</div><div className="value">{st?.pending ?? "—"}</div></div>
