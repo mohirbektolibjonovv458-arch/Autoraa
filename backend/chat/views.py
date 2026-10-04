@@ -280,7 +280,7 @@ class ChatAudioView(APIView):
 
     def get(self, request, pk):
         from django.core import signing
-        from django.http import FileResponse, Http404
+        from django.http import Http404
         from core.uploads import AUDIO_FORMATS
         import os
         try:
@@ -295,8 +295,9 @@ class ChatAudioView(APIView):
             fh = m.audio.open("rb")
         except FileNotFoundError:
             raise Http404
+        from core.ranged import ranged_response
         ctype = AUDIO_FORMATS.get(os.path.splitext(m.audio.name)[1].lower(), "application/octet-stream")
-        resp = FileResponse(fh, content_type=ctype)
+        resp = ranged_response(request, fh, m.audio.size, ctype)  # iPhone audio'ni faqat Range bilan ijro etadi
         resp["Cache-Control"] = "private, max-age=3600"
         resp["X-Content-Type-Options"] = "nosniff"
         return resp

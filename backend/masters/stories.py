@@ -1,8 +1,8 @@
 """Ustalar hikoyalari (story) API.
 
 GET    /api/masters/stories/              — faol hikoyalar, usta bo'yicha guruhlangan (ko'rilmaganlar oldinda)
-POST   /api/masters/stories/              — usta: yangi hikoya (rasm + matn)
-PATCH  /api/masters/stories/<id>/         — o'z hikoyasini tahrirlash (matn va/yoki rasm)
+POST   /api/masters/stories/              — usta: yangi hikoya (rasm yoki video ≤60 s + matn)
+PATCH  /api/masters/stories/<id>/         — o'z hikoyasini tahrirlash (matn va/yoki rasm/video)
 DELETE /api/masters/stories/<id>/         — o'z hikoyasini o'chirish (admin — istalganini, moderatsiya)
 POST   /api/masters/stories/<id>/view/    — ko'rildi (halqa kulrang bo'ladi)
 24 soatdan keyin hikoya ro'yxatda chiqmaydi; fon jarayoni (purge_expired_stories) uni fayli bilan o'chiradi.
@@ -16,13 +16,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.params import str_in
-from core.uploads import check_image
+from core.uploads import MAX_VIDEO_SECONDS, check_image, check_video, mp4_duration
 
 from .models import Story, StoryView
 
 
 def _story_json(s, me, seen_ids, own):
-    d = {"id": s.id, "image": s.image.url if s.image else None, "caption": s.caption, "created_at": s.created_at,
+    d = {"id": s.id, "image": s.image.url if s.image else None, "video": s.video.url if s.video else None,
+         "kind": "video" if s.video else "image", "duration": s.duration, "caption": s.caption, "created_at": s.created_at,
          "expires_at": s.expires_at, "seen": s.id in seen_ids, "edited": bool(s.edited_at)}
     if own:
         d["views"] = getattr(s, "n_views", None) if getattr(s, "n_views", None) is not None else s.views.count()
@@ -31,6 +32,38 @@ def _story_json(s, me, seen_ids, own):
 
 def active_stories():
     return Story.objects.filter(expires_at__gt=timezone.now(), master__user__is_active=True)
+
+
+def _media_in(request, required):
+    """So'rovdagi rasm/video: tekshiradi. Qaytaradi: (image, video, duration, xato_javobi)."""
+    image, video, duration = request.FILES.get("image"), request.FILES.get("video"), None
+    if video:
+        ext, err = check_video(video)
+        if err:
+            return None, None, None, Response({"detail": err}, status=400)
+        video.name = "story" + ext  # kengaytma — faylning haqiqiy formati
+        d = mp4_duration(video) if ext in (".mp4", ".mov") else None
+        if d is None:
+            try:
+                d = float(request.data.get("duration") or 0)
+            except (TypeError, ValueError):
+                d = 0
+        duration = max(1, min(MAX_VIDEO_SECONDS, round(d))) if d else None
+    if image:
+        err = check_image(image)
+        if err:
+            return None, None, None, Response({"detail": err}, status=400)
+    if required and not image and not video:
+        return None, None, None, Response({"detail": "Rasm yoki video tanlang."}, status=400)
+    return image, video, duration, None
+
+
+def _drop(f):
+    if f:
+        try:
+            f.storage.delete(f.name)
+        except Exception:
+            pass
 
 
 class StoryListView(APIView):
@@ -58,18 +91,15 @@ class StoryListView(APIView):
         me = request.user
         if me.role != "usta" or not hasattr(me, "master"):
             return Response({"detail": "Hikoyani faqat ustalar joylay oladi."}, status=403)
-        image = request.FILES.get("image")
-        if not image:
-            return Response({"detail": "Rasm tanlang."}, status=400)
-        err = check_image(image)
+        image, video, duration, err = _media_in(request, required=True)
         if err:
-            return Response({"detail": err}, status=400)
+            return err
         caption = str_in(request.data.get("caption"))
         if len(caption) > 200:
             return Response({"detail": "Matn 200 belgidan oshmasin."}, status=400)
         if active_stories().filter(master=me.master).count() >= Story.MAX_ACTIVE:
             return Response({"detail": f"Bir vaqtda ko'pi bilan {Story.MAX_ACTIVE} ta hikoya. Eskisini o'chiring yoki muddati tugashini kuting."}, status=400)
-        s = Story.objects.create(master=me.master, image=image, caption=caption,
+        s = Story.objects.create(master=me.master, image=image or None, video=video or None, duration=duration, caption=caption,
                                  expires_at=timezone.now() + timedelta(hours=Story.LIFETIME_HOURS))
         return Response(_story_json(s, me, set(), True), status=201)
 
@@ -92,28 +122,30 @@ class StoryDetailView(APIView):
                 return Response({"detail": "Matn 200 belgidan oshmasin."}, status=400)
             s.caption = caption
             fields.append("caption")
-        image = request.FILES.get("image")
-        if image:
-            err = check_image(image)
-            if err:
-                return Response({"detail": err}, status=400)
-            old = s.image
-            s.image = image
-            fields.append("image")
+        image, video, duration, err = _media_in(request, required=False)
+        if err:
+            return err
+        old = []
+        if video or image:  # media almashtirildi: video (+ muqova) yoki rasm
+            old = [(f.storage, f.name) for f in (s.image, s.video) if f]
+            s.image = image or None
+            s.video = video or None
+            s.duration = duration if video else None
+            fields.append("media")
         if not fields:
             return Response({"detail": "O'zgarish yo'q."}, status=400)
         s.edited_at = timezone.now()
         s.save()  # muddat o'zgarmaydi — joylangan vaqtdan 24 soat
-        if image and old:
-            old.storage.delete(old.name)
+        for storage, name in old:
+            storage.delete(name)
         return Response(_story_json(s, request.user, set(), True))
 
     def delete(self, request, pk):
         s, err = self.get_own(request, pk, allow_admin=True)
         if err:
             return err
-        if s.image:
-            s.image.delete(save=False)
+        _drop(s.image)
+        _drop(s.video)
         s.delete()
         return Response(status=204)
 
@@ -130,8 +162,8 @@ def purge_expired_stories():
     """Muddati o'tgan hikoyalarni fayli bilan o'chiradi (fon jarayoni, 30 daqiqada bir). Qaytaradi: nechta."""
     n = 0
     for s in Story.objects.filter(expires_at__lte=timezone.now())[:500]:
-        if s.image:
-            s.image.delete(save=False)
+        _drop(s.image)
+        _drop(s.video)
         s.delete()
         n += 1
     return n

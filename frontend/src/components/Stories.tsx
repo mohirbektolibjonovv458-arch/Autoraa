@@ -1,19 +1,23 @@
 /**
  * Ustalar hikoyalari (story): bosh sahifadagi qator, to'liq ekranli ko'rish oynasi, joylash / tahrirlash.
- * Hikoya — rasm + qisqa matn, 24 soatdan keyin o'zi o'chadi. Usta o'z hikoyasini istalgan payt tahrirlaydi yoki o'chiradi.
+ * Hikoya — rasm yoki video (60 soniyagacha) + qisqa matn, 24 soatdan keyin o'zi o'chadi. Usta o'z hikoyasini istalgan payt tahrirlaydi yoki o'chiradi.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { Camera, ChevronRight, Clock, Eye, ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, Clock, Eye, Images, Pencil, Plus, RefreshCw, Trash2, Video, Volume2, VolumeX, X } from "lucide-react";
 import { api, errMsg, media } from "../api";
 import { timeAgo } from "../utils";
-import { Avatar, Modal, Verified, useToast } from "./ui";
+import { useAuth } from "../auth";
+import { Avatar, Verified, useToast } from "./ui";
 
-type Story = { id: number; image: string; caption: string; created_at: string; expires_at: string; seen: boolean; edited: boolean; views?: number };
+type Story = { id: number; image: string | null; video: string | null; kind: "image" | "video"; duration: number | null; caption: string; created_at: string; expires_at: string; seen: boolean; edited: boolean; views?: number };
 type Group = { master_id: number; name: string; avatar: string | null; is_verified: boolean; own: boolean; all_seen: boolean; latest_at: string; stories: Story[] };
 
-const DURATION = 6000;  // bitta hikoya ekranda (ms)
+const DURATION = 6000;  // bitta rasmli hikoya ekranda (ms); video — o'z uzunligicha
+const MAX_VIDEO_S = 60, MAX_VIDEO_MB = 100;
+let handoff = false;   // ko'rish oynasidan tahrirlashga o'tilmoqda — «orqaga» yozuvi qayta ishlatiladi
+let soundOff = false;  // ovozni o'chirgan bo'lsa — keyingi videolarda ham o'chiq qoladi
 
 const leftText = (iso: string) => {
   const h = Math.max(0, (new Date(iso).getTime() - Date.now()) / 3600000);
@@ -63,7 +67,7 @@ export default function StoriesBar() {
       </div>
       {open !== null && data.groups[open] && (
         <StoryViewer groups={data.groups} start={open} onClose={() => { setOpen(null); load(); }} onSeen={markSeen}
-          onEdit={(s) => { setOpen(null); setCompose(s); }}
+          onEdit={(s) => { handoff = true; setOpen(null); setCompose(s); }}
           onDeleted={() => { toast("Hikoya o'chirildi"); setOpen(null); load(); }} />
       )}
       {compose && <StoryComposer story={compose === "new" ? null : compose} onClose={() => setCompose(null)}
@@ -86,7 +90,11 @@ function StoryViewer({ groups, start, onClose, onSeen, onEdit, onDeleted }: {
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [muted, setMuted] = useState(soundOff);
+  const [buffering, setBuffering] = useState(false);
+  const vid = useRef<HTMLVideoElement>(null);
   const s = g?.stories[si];
+  const isVideo = !!s?.video;
   const elapsed = useRef(0);
   const press = useRef<{ t: number; x: number; y: number } | null>(null);
 
@@ -103,12 +111,21 @@ function StoryViewer({ groups, start, onClose, onSeen, onEdit, onDeleted }: {
 
   // yangi hikoya: taymer qaytadan, ko'rildi deb belgilash
   useEffect(() => {
-    elapsed.current = 0; setProgress(0); setLoaded(false);
+    elapsed.current = 0; setProgress(0); setLoaded(false); setBuffering(false);
     if (s && !g.own && !s.seen) { api.post(`/masters/stories/${s.id}/view/`).catch(() => {}); onSeen(g.master_id, s.id); }
   }, [gi, si]);
   useEffect(() => {
     if (!loaded || paused) return;
     let last = performance.now(), raf = 0;
+    if (isVideo) {  // video: chiziq video vaqtiga qarab, tugashi — onEnded
+      const tick = () => {
+        const v = vid.current;
+        if (v) { const d = v.duration && isFinite(v.duration) ? v.duration : s?.duration || 15; setProgress(Math.min(1, v.currentTime / d)); }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }
     const tick = (t: number) => {
       elapsed.current += t - last; last = t;
       const p = Math.min(1, elapsed.current / DURATION);
@@ -117,7 +134,15 @@ function StoryViewer({ groups, start, onClose, onSeen, onEdit, onDeleted }: {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [loaded, paused, next]);
+  }, [loaded, paused, next, isVideo]);
+  // video: pauza / davom; brauzer ovozli ijroga ruxsat bermasa — ovozsiz davom etadi
+  useEffect(() => {
+    const v = vid.current;
+    if (!v || !isVideo) return;
+    if (paused) { v.pause(); return; }
+    v.muted = muted;
+    v.play().catch(() => { v.muted = true; setMuted(true); v.play().catch(() => {}); });
+  }, [paused, isVideo, gi, si, muted]);
 
   // klaviatura, sahifa aylanishi, telefondagi «orqaga» tugmasi — oynani yopadi
   useEffect(() => {
@@ -131,7 +156,7 @@ function StoryViewer({ groups, start, onClose, onSeen, onEdit, onDeleted }: {
     history.pushState({ avtoraStory: true }, "");
     const onPop = () => close();
     window.addEventListener("popstate", onPop);
-    return () => { window.removeEventListener("popstate", onPop); if (history.state?.avtoraStory) history.back(); };
+    return () => { window.removeEventListener("popstate", onPop); if (history.state?.avtoraStory && !handoff) history.back(); };
   }, []);
 
   if (!g || !s) return null;
@@ -160,12 +185,19 @@ function StoryViewer({ groups, start, onClose, onSeen, onEdit, onDeleted }: {
             <div className="row gap-4"><b className="ellipsis">{g.name}</b>{g.is_verified && <Verified />}</div>
             <div className="xs">{timeAgo(s.created_at)}{s.edited && " · tahrirlangan"}</div>
           </div>
+          {isVideo && <button type="button" className="sv-x" onClick={() => { soundOff = !muted; setMuted(!muted); }} aria-label={muted ? "Ovozni yoqish" : "Ovozni o'chirish"}>{muted ? <VolumeX size={21} /> : <Volume2 size={21} />}</button>}
           <button type="button" className="sv-x" onClick={close} aria-label="Yopish"><X size={22} /></button>
         </div>
         <div className="sv-media" onPointerDown={down} onPointerUp={up} onPointerCancel={() => { press.current = null; setPaused(false); }}
           onContextMenu={(e) => e.preventDefault()}>
-          {!loaded && <span className="im-spin sv-spin" />}
-          <img key={s.id} src={media(s.image)} alt={s.caption || "Hikoya"} draggable={false} onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />
+          {(!loaded || buffering) && <span className="im-spin sv-spin" />}
+          {isVideo ? (
+            <video key={s.id} ref={vid} src={media(s.video!)} poster={s.image ? media(s.image) : undefined} playsInline autoPlay muted={muted} preload="auto"
+              onLoadedData={() => setLoaded(true)} onError={() => setLoaded(true)} onWaiting={() => setBuffering(true)} onPlaying={() => setBuffering(false)}
+              onEnded={next} disablePictureInPicture controls={false} />
+          ) : (
+            <img key={s.id} src={media(s.image!)} alt={s.caption || "Hikoya"} draggable={false} onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />
+          )}
           {s.caption && <div className="sv-caption">{s.caption}</div>}
         </div>
         <div className="sv-foot">
@@ -200,46 +232,179 @@ async function shrink(file: File, max = 1920): Promise<Blob> {
   } catch { return file; }
 }
 
+/** Video uzunligi va muqovasi (bitta kadr, JPEG) — muqova hikoya yuklanguncha ko'rinadi. */
+function videoMeta(url: string): Promise<{ duration: number | null; poster: Blob | null }> {
+  return new Promise((res) => {
+    const v = document.createElement("video");
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+    let done = false;
+    const dur = () => (v.duration && isFinite(v.duration) ? v.duration : null);
+    const finish = (poster: Blob | null) => { if (done) return; done = true; res({ duration: dur(), poster }); v.removeAttribute("src"); v.load(); };
+    v.onloadedmetadata = () => { try { v.currentTime = Math.min(0.4, (dur() || 1) / 3); } catch { finish(null); } };
+    v.onseeked = () => {
+      try {
+        const k = Math.min(1, 1080 / Math.max(v.videoWidth || 1, v.videoHeight || 1));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k));
+        c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => finish(b), "image/jpeg", 0.82);
+      } catch { finish(null); }
+    };
+    v.onerror = () => finish(null);
+    setTimeout(() => finish(null), 8000);
+  });
+}
+
+const isVideoFile = (f: File) => f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
+const isImageFile = (f: File) => f.type.startsWith("image/") || /\.(heic|heif)$/i.test(f.name);
+
+/** Hikoya joylash / tahrirlash — to'liq ekran (Instagram uslubida): media, o'ngda asboblar, pastda izoh va «Hikoyangiz». */
 function StoryComposer({ story, onClose, onDone }: { story: Story | null; onClose: () => void; onDone: (msg: string) => void }) {
   const toast = useToast();
+  const { user } = useAuth();
+  const orig = story ? { kind: story.kind, url: media((story.video || story.image)!), poster: story.image ? media(story.image) : undefined } : null;
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(story ? media(story.image) : null);
+  const [kind, setKind] = useState<"image" | "video" | null>(orig?.kind || null);
+  const [preview, setPreview] = useState<string | null>(orig?.url || null);
+  const [poster, setPoster] = useState<Blob | null>(null);
+  const [dur, setDur] = useState<number | null>(story?.duration ?? null);
   const [caption, setCaption] = useState(story?.caption || "");
-  const [busy, setBusy] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [muted, setMuted] = useState(soundOff);
+  const [checking, setChecking] = useState(false);
+  const [pct, setPct] = useState<number | null>(null);
+  const gallery = useRef<HTMLInputElement>(null);
+  const pv = useRef<HTMLVideoElement>(null);
+
   useEffect(() => () => { if (preview?.startsWith("blob:")) URL.revokeObjectURL(preview); }, [preview]);
-  const pick = (f?: File) => {
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    if (!handoff) history.pushState({ avtoraStory: true }, "");
+    handoff = false;
+    const onPop = () => onClose();  // telefonning «orqaga» tugmasi
+    window.addEventListener("popstate", onPop);
+    return () => { document.body.style.overflow = prevOverflow; window.removeEventListener("popstate", onPop); if (history.state?.avtoraStory) history.back(); };
+  }, []);
+  useEffect(() => {  // ko'rib chiqishda video ovozli o'ynaydi; brauzer ruxsat bermasa — ovozsiz
+    const v = pv.current;
+    if (!v) return;
+    v.muted = muted;
+    v.play().catch(() => { v.muted = true; setMuted(true); v.play().catch(() => {}); });
+  }, [preview, muted]);
+
+  const pick = async (f?: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/") && !/\.(heic|heif)$/i.test(f.name)) { toast("Faqat rasm tanlang", "error"); return; }
-    setFile(f); setPreview(URL.createObjectURL(f));
+    const video = isVideoFile(f);
+    if (!video && !isImageFile(f)) { toast("Rasm yoki video tanlang", "error"); return; }
+    if (video && f.size > MAX_VIDEO_MB * 1024 * 1024) { toast(`Video juda katta (${Math.round(f.size / 1048576)} MB). ${MAX_VIDEO_MB} MB gacha bo'lsin.`, "error"); return; }
+    const url = URL.createObjectURL(f);
+    if (video) {
+      setChecking(true);
+      const m = await videoMeta(url);
+      setChecking(false);
+      if (m.duration && m.duration > MAX_VIDEO_S + 0.5) {
+        URL.revokeObjectURL(url);
+        toast(`Video ${Math.round(m.duration)} soniya — hikoya ${MAX_VIDEO_S} soniyagacha bo'ladi. Qisqaroq video tanlang.`, "error");
+        return;
+      }
+      setPoster(m.poster); setDur(m.duration ? Math.round(m.duration) : null);
+    } else { setPoster(null); setDur(null); }
+    setFile(f); setKind(video ? "video" : "image"); setPreview(url);
   };
+  const onInput = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; pick(f); };
+
+  const back = () => {
+    if (pct !== null) return;
+    if (typing) { setTyping(false); return; }
+    if (file) {  // tanlangan faylni bekor qilish — oldingi holatga
+      setFile(null); setPoster(null);
+      setKind(orig?.kind || null); setPreview(orig?.url || null); setDur(story?.duration ?? null);
+      return;
+    }
+    onClose();
+  };
+
   const submit = async () => {
-    if (!story && !file) { toast("Rasm tanlang", "error"); return; }
-    setBusy(true);
+    if (pct !== null) return;
+    if (!story && !file) { toast("Rasm yoki video tanlang", "error"); return; }
+    setTyping(false); setPct(0);
     try {
       const fd = new FormData();
-      if (file) fd.append("image", await shrink(file), file.name.replace(/\.(png|webp|heic|heif)$/i, ".jpg"));
+      if (file && kind === "video") {
+        fd.append("video", file, file.name || "video.mp4");
+        if (poster) fd.append("image", poster, "poster.jpg");
+        if (dur) fd.append("duration", String(dur));
+      } else if (file) {
+        fd.append("image", await shrink(file), file.name.replace(/\.(png|webp|heic|heif)$/i, ".jpg"));
+      }
       fd.append("caption", caption.trim());
-      if (story) await api.patch(`/masters/stories/${story.id}/`, fd); else await api.post("/masters/stories/", fd);
+      const cfg = { timeout: 0, onUploadProgress: (e: any) => { if (e.total) setPct(Math.min(99, Math.round((e.loaded * 100) / e.total))); } };
+      if (story) await api.patch(`/masters/stories/${story.id}/`, fd, cfg); else await api.post("/masters/stories/", fd, cfg);
       onDone(story ? "Hikoya yangilandi" : "Hikoya joylandi — 24 soat ko'rinadi");
-    } catch (e) { toast(errMsg(e), "error"); }
-    finally { setBusy(false); }
+    } catch (e) { toast(errMsg(e), "error"); setPct(null); }
   };
-  return (
-    <Modal title={story ? "Hikoyani tahrirlash" : "Yangi hikoya"} onClose={onClose}>
-      <div className="col gap-12">
-        <div className="sc-preview">
-          {preview ? <img src={preview} alt="" /> : <div className="sc-empty"><ImagePlus size={30} /><span className="small">Ish jarayoni, tayyor mashina, aksiya yoki yangi uskuna rasmi</span></div>}
-          {caption && preview && <div className="sv-caption">{caption}</div>}
-        </div>
-        <div className="row gap-8">
-          <label className="btn btn-ghost grow" style={{ cursor: "pointer" }}><Camera size={16} />Kamera<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0])} /></label>
-          <label className="btn btn-ghost grow" style={{ cursor: "pointer" }}><ImagePlus size={16} />Galereya<input type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0])} /></label>
-        </div>
-        <label className="field"><span>Matn (ixtiyoriy) <em className="muted" style={{ fontStyle: "normal" }}>{caption.length}/200</em></span>
-          <textarea className="input" rows={2} maxLength={200} value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Masalan: Bugun 20% chegirma — motor diagnostikasi" /></label>
-        <p className="xs muted">Hikoya joylangandan keyin 24 soat ko'rinadi, so'ng o'zi o'chadi. Istalgan payt tahrirlash yoki o'chirish mumkin.</p>
-        <button className="btn btn-red btn-lg btn-block" disabled={busy || (!story && !file)} onClick={submit}>{busy ? "Yuklanmoqda…" : story ? "Saqlash" : "Joylash"}</button>
+
+  const busy = pct !== null;
+  return createPortal(
+    <div className="sc-full" role="dialog" aria-modal="true" aria-label={story ? "Hikoyani tahrirlash" : "Yangi hikoya"}>
+      <div className="sc-frame">
+        {!preview ? (
+          <>
+            <div className="sc-top">
+              <button type="button" className="sc-round" onClick={onClose} aria-label="Yopish"><ArrowLeft size={22} /></button>
+              <b>Yangi hikoya</b>
+            </div>
+            <div className="sc-pick">
+              <label className="sc-opt"><span><Camera size={26} /></span>Rasm olish<input type="file" accept="image/*" capture="environment" hidden onChange={onInput} /></label>
+              <label className="sc-opt"><span><Video size={26} /></span>Video olish<input type="file" accept="video/*" capture="environment" hidden onChange={onInput} /></label>
+              <button type="button" className="sc-opt" onClick={() => gallery.current?.click()}><span><Images size={26} /></span>Galereya</button>
+              <p>Rasm yoki {MAX_VIDEO_S} soniyagacha video. Hikoya 24 soat ko'rinadi, istalgan payt tahrirlash yoki o'chirish mumkin.</p>
+              {checking && <span className="im-spin" style={{ color: "#fff" }} />}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="sc-stage" onClick={() => !busy && setTyping(true)}>
+              {kind === "video"
+                ? <video ref={pv} src={preview} poster={!file ? orig?.poster : undefined} playsInline autoPlay loop muted={muted} />
+                : <img src={preview} alt="" />}
+              {caption && !typing && <div className="sv-caption">{caption}</div>}
+            </div>
+            <button type="button" className="sc-round sc-back" onClick={back} aria-label="Orqaga"><ArrowLeft size={22} /></button>
+            <div className="sc-tools">
+              <button type="button" className="sc-round" onClick={() => setTyping(true)} aria-label="Matn yozish" title="Matn"><span className="sc-aa">Aa</span></button>
+              {kind === "video" && <button type="button" className="sc-round" onClick={() => { soundOff = !muted; setMuted(!muted); }} aria-label={muted ? "Ovozni yoqish" : "Ovozni o'chirish"}>{muted ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>}
+              <button type="button" className="sc-round" onClick={() => gallery.current?.click()} aria-label="Boshqa rasm yoki video" title="Almashtirish"><RefreshCw size={19} /></button>
+              {kind === "video" && dur ? <span className="sc-dur">0:{String(dur).padStart(2, "0")}</span> : null}
+            </div>
+            <div className="sc-bottom">
+              <input className="sc-caption" value={caption} maxLength={200} onChange={(e) => setCaption(e.target.value)} placeholder="Izoh qo'shing…" aria-label="Izoh" />
+              <div className="sc-actions">
+                <button type="button" className="sc-pill" onClick={submit} disabled={busy}>
+                  <Avatar name={user?.full_name || user?.first_name} src={user?.avatar} />{story ? "Saqlash" : "Hikoyangiz"}
+                </button>
+                <button type="button" className="sc-go" onClick={submit} disabled={busy} aria-label={story ? "Saqlash" : "Joylash"}><ChevronRight size={26} /></button>
+              </div>
+            </div>
+            {typing && (
+              <div className="sc-typing" onClick={() => setTyping(false)}>
+                <button type="button" className="sc-done" onClick={() => setTyping(false)}>Tayyor</button>
+                <textarea autoFocus maxLength={200} value={caption} onClick={(e) => e.stopPropagation()} onChange={(e) => setCaption(e.target.value)} placeholder="Matn yozing…" aria-label="Hikoya matni" />
+                <span className="sc-count">{caption.length}/200</span>
+              </div>
+            )}
+            {busy && (
+              <div className="sc-upload" role="status">
+                <span className="sc-ring" style={{ ["--p" as any]: `${pct}%` }}><b>{pct}%</b></span>
+                <span>{kind === "video" && file ? "Video yuklanmoqda…" : "Yuklanmoqda…"}</span>
+              </div>
+            )}
+          </>
+        )}
+        <input ref={gallery} type="file" accept="image/*,video/*" hidden onChange={onInput} />
       </div>
-    </Modal>
+    </div>,
+    document.body,
   );
 }

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from core.uploads import UploadTo, validate_image
+from core.uploads import UploadTo, VideoUploadTo, validate_image
 from django.db.models import Avg, Count
 
 SPECIALTIES = [
@@ -112,11 +112,13 @@ class ReviewPhoto(models.Model):
 
 
 class Story(models.Model):
-    """Usta hikoyasi (story): rasm + qisqa matn. 24 soatdan keyin ko'rinmaydi va fon jarayoni uni (fayli bilan) o'chiradi."""
+    """Usta hikoyasi (story): rasm yoki video (+ qisqa matn). 24 soatdan keyin ko'rinmaydi va fon jarayoni uni (fayli bilan) o'chiradi."""
     LIFETIME_HOURS = 24
     MAX_ACTIVE = 10  # bir ustada bir vaqtda ko'pi bilan
     master = models.ForeignKey(MasterProfile, on_delete=models.CASCADE, related_name="stories")
-    image = models.ImageField(upload_to=UploadTo("stories"), validators=[validate_image])
+    image = models.ImageField(upload_to=UploadTo("stories"), validators=[validate_image], blank=True)  # rasm yoki video muqovasi
+    video = models.FileField(upload_to=VideoUploadTo("stories-video"), blank=True, null=True)
+    duration = models.PositiveSmallIntegerField(null=True, blank=True)  # video, soniya
     caption = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -104,3 +104,95 @@ class AudioUploadTo:
 
     def __eq__(self, other):
         return isinstance(other, AudioUploadTo) and other.folder == self.folder
+
+
+# --- Video (ustalar hikoyalari) ---
+MAX_VIDEO_MB = 100
+MAX_VIDEO_SECONDS = 60
+VIDEO_FORMATS = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm"}
+
+
+def sniff_video(head):
+    if head[4:8] == b"ftyp":
+        return ".mov" if head[8:12] == b"qt  " else ".mp4"
+    if head[:4] == b"\x1aE\xdf\xa3":
+        return ".webm"
+    return None
+
+
+def mp4_duration(f):
+    """MP4/MOV davomiyligi (soniya) — moov/mvhd qutisidan, faylni to'liq o'qimasdan. Topilmasa None."""
+    import struct
+    try:
+        f.seek(0, 2)
+        end = f.tell()
+
+        def boxes(start, stop):
+            pos = start
+            while pos + 8 <= stop:
+                f.seek(pos)
+                size, kind = struct.unpack(">I4s", f.read(8))
+                hdr = 8
+                if size == 1:
+                    size = struct.unpack(">Q", f.read(8))[0]
+                    hdr = 16
+                elif size == 0:
+                    size = stop - pos
+                if size < hdr:
+                    return
+                yield kind, pos + hdr, pos + size
+                pos += size
+
+        for kind, body, stop in boxes(0, end):
+            if kind != b"moov":
+                continue
+            for k2, b2, _ in boxes(body, stop):
+                if k2 == b"mvhd":
+                    f.seek(b2)
+                    version = f.read(1)[0]
+                    f.read(3)
+                    if version == 1:
+                        f.read(16)
+                        scale, dur = struct.unpack(">IQ", f.read(12))
+                    else:
+                        f.read(8)
+                        scale, dur = struct.unpack(">II", f.read(8))
+                    return dur / scale if scale else None
+        return None
+    except Exception:
+        return None
+    finally:
+        f.seek(0)
+
+
+def check_video(f):
+    """Hikoya videosi: hajm, haqiqiy format (sehrli baytlar) va davomiylik. Qaytaradi: (kengaytma, None) yoki (None, xato)."""
+    if not f:
+        return None, None
+    if f.size > MAX_VIDEO_MB * 1024 * 1024:
+        return None, f"Video {MAX_VIDEO_MB} MB dan oshmasligi kerak."
+    head = f.read(16)
+    f.seek(0)
+    ext = sniff_video(head)
+    if not ext:
+        return None, "Fayl video emas yoki format qo'llab-quvvatlanmaydi (MP4, MOV, WEBM)."
+    if ext in (".mp4", ".mov"):
+        d = mp4_duration(f)
+        if d is not None and d > MAX_VIDEO_SECONDS + 1:
+            return None, f"Video {MAX_VIDEO_SECONDS} soniyadan uzun bo'lmasin."
+    return ext, None
+
+
+@deconstructible
+class VideoUploadTo:
+    def __init__(self, folder):
+        self.folder = folder
+
+    def __call__(self, instance, filename):
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in VIDEO_FORMATS:
+            ext = ".mp4"
+        return f"{self.folder}/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{ext}"
+
+    def __eq__(self, other):
+        return isinstance(other, VideoUploadTo) and other.folder == self.folder
