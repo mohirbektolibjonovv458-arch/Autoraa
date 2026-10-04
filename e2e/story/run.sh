@@ -20,6 +20,9 @@ MasterProfile.objects.create(user=u, is_verified=True)
 c=User.objects.create_user(phone='+998901112002', first_name='Ali', role='user')
 open('$S/story1.jpg','wb').write(img('#1f4f8a', 720, 1280)); open('$S/story2.jpg','wb').write(img('#2f6b3a', 1280, 720))
 json.dump({'usta':tok(u),'client':tok(c)}, open('$S/ids.json','w'))" >/dev/null 2>&1
+# sinov videolari (Chromium WebM ijro etadi): 4 soniyalik va 70 soniyalik (rad etilishi kerak)
+ffmpeg -v error -y -f lavfi -i testsrc=size=360x640:rate=25 -f lavfi -i sine=frequency=440 -t 4 -c:v libvpx -b:v 300k -c:a libopus $S/v4.webm
+ffmpeg -v error -y -f lavfi -i testsrc=size=160x284:rate=10 -t 70 -c:v libvpx -b:v 50k $S/v70.webm
 nohup $P manage.py start --port 8800 > $S/server.log 2>&1 &
 for i in $(seq 1 60); do curl -s -o /dev/null http://localhost:8800/api/health/ && break; sleep 1; done
 $P -u "$HERE/story_test.py"; pgrep -af "port 8800" | grep -v pgrep | awk '{print $1}' | xargs -r kill

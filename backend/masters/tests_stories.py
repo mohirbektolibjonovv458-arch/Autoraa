@@ -101,3 +101,50 @@ class StoryTests(TestCase):
         self.post(self.u1)
         self.u1.is_active = False; self.u1.save()
         self.assertEqual(self.c(self.a).get(self.URL).data["groups"], [])
+
+
+def mp4(seconds=10, junk=0):
+    """Eng kichik MP4 tuzilmasi: ftyp + mdat + moov/mvhd (davomiylik tekshiruvi uchun)."""
+    import struct
+    def box(kind, body):
+        return struct.pack(">I4s", 8 + len(body), kind) + body
+    mvhd = box(b"mvhd", b"\x00\x00\x00\x00" + b"\x00" * 8 + struct.pack(">II", 1000, int(seconds * 1000)) + b"\x00" * 80)
+    data = box(b"ftyp", b"isom\x00\x00\x02\x00isomiso2mp41") + box(b"mdat", b"\x00" * (64 + junk)) + box(b"moov", mvhd)
+    return SimpleUploadedFile("v.mp4", data, "video/mp4")
+
+
+class StoryVideoTests(TestCase):
+    URL = StoryTests.URL
+    setUp = StoryTests.setUp
+    c = StoryTests.c
+
+    def test_video_story_post_validate_and_serve(self):
+        from core.uploads import mp4_duration
+        self.assertAlmostEqual(mp4_duration(mp4(12.5)), 12.5)
+        cl = self.c(self.u1)
+        r = cl.post(self.URL, {"video": mp4(12), "image": jpeg(), "caption": "Ish jarayoni"}, format="multipart")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["kind"], "video"); self.assertEqual(r.data["duration"], 12)
+        self.assertTrue(r.data["video"].endswith(".mp4")); self.assertTrue(r.data["image"])  # muqova
+        # uzun video, video emas fayl (kengaytmasi .mp4 bo'lsa ham) — rad
+        self.assertEqual(cl.post(self.URL, {"video": mp4(75)}, format="multipart").status_code, 400)
+        fake = SimpleUploadedFile("x.mp4", b"<html><script>alert(1)</script></html>", "video/mp4")
+        self.assertEqual(cl.post(self.URL, {"video": fake}, format="multipart").status_code, 400)
+        # Range bilan beriladi (iPhone)
+        url = r.data["video"]
+        full = APIClient().get(url)
+        self.assertEqual(full.status_code, 200); self.assertEqual(full["Content-Type"], "video/mp4")
+        part = APIClient().get(url, HTTP_RANGE="bytes=0-7")
+        self.assertEqual(part.status_code, 206); self.assertEqual(b"".join(part.streaming_content), mp4(12).read()[:8])
+        self.assertTrue(part["Content-Range"].startswith("bytes 0-7/"))
+        self.assertEqual(APIClient().get(url, HTTP_RANGE="bytes=999999-").status_code, 416)
+        # rasm bilan almashtirish — video fayli o'chadi
+        s = Story.objects.get(pk=r.data["id"]); vpath = s.video.path
+        r2 = cl.patch(f"{self.URL}{s.id}/", {"image": jpeg("blue")}, format="multipart")
+        self.assertEqual(r2.status_code, 200); self.assertEqual(r2.data["kind"], "image"); self.assertIsNone(r2.data["video"])
+        self.assertFalse(os.path.exists(vpath))
+        # yana videoga; muddati tugagach fayl o'chadi
+        r3 = cl.patch(f"{self.URL}{s.id}/", {"video": mp4(5)}, format="multipart")
+        self.assertEqual(r3.data["kind"], "video"); s.refresh_from_db(); vpath = s.video.path
+        Story.objects.filter(pk=s.id).update(expires_at=timezone.now() - timedelta(minutes=1))
+        purge_expired_stories(); self.assertFalse(os.path.exists(vpath))

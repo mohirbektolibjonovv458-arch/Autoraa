@@ -44,7 +44,12 @@ def media_serve(request, path):
     # to'lov cheklari va chat rasmlari shaxsiy — faqat imzoli havola orqali
     if path.startswith(("receipts/", "chat/", "chat-audio/")) or ".." in path:
         raise Http404
-    resp = serve(request, path, document_root=settings.MEDIA_ROOT)
+    if path.lower().endswith((".mp4", ".mov", ".webm", ".m4a", ".mp3", ".ogg")):
+        # video/audio — Range bilan (iPhone shusiz ijro etmaydi)
+        from core.ranged import serve_file
+        resp = serve_file(request, settings.MEDIA_ROOT, path)
+    else:
+        resp = serve(request, path, document_root=settings.MEDIA_ROOT)
     resp["Cache-Control"] = "public, max-age=604800"
     resp["X-Content-Type-Options"] = "nosniff"
     return resp
