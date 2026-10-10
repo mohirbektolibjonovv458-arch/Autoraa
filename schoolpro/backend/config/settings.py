@@ -37,6 +37,19 @@ if not SECRET_KEY:
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "*" if DEBUG else "localhost,127.0.0.1,0.0.0.0")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
+# Railway: ommaviy domen avtomatik qo'shiladi, HTTPS proksi orqasida ishlaydi
+ON_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"))
+for _dom in env_list("RAILWAY_PUBLIC_DOMAIN"):
+    if _dom not in ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_dom)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{_dom}")
+if ON_RAILWAY:
+    ALLOWED_HOSTS.append(".railway.app")
+    ALLOWED_HOSTS.append(".up.railway.app")
+    os.environ.setdefault("HTTPS", "1")
+    os.environ.setdefault("SSL_REDIRECT", "0")  # Railway o'zi HTTPS beradi
+    os.environ.setdefault("TRUSTED_PROXY", "*")
+
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -80,7 +93,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-if os.getenv("POSTGRES_DB"):
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if DATABASE_URL.startswith(("postgres://", "postgresql://")):
+    from urllib.parse import unquote, urlparse
+
+    _u = urlparse(DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(_u.path.lstrip("/")),
+            "USER": unquote(_u.username or ""),
+            "PASSWORD": unquote(_u.password or ""),
+            "HOST": _u.hostname or "localhost",
+            "PORT": str(_u.port or 5432),
+            "CONN_MAX_AGE": 60,
+        }
+    }
+elif os.getenv("POSTGRES_DB"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",

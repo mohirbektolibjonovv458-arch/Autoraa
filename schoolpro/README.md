@@ -101,7 +101,31 @@ cd frontend && npm run dev     # http://localhost:5173 (API 8000 ga proksi qilin
 
 ---
 
-## Serverga joylash (Docker + avtomatik HTTPS)
+## Railway'ga joylash (eng oson yo'l)
+
+1. Bu papka tarkibini **alohida GitHub repozitoriyasiga** yuklang. Repo ildizida `Dockerfile`, `railway.json`, `backend/` va `frontend/` bo'lishi kerak.
+2. Railway → **New Project → Deploy from GitHub repo** → repozitoriyni tanlang. Railway `Dockerfile` ni o'zi topadi.
+3. Shu loyihaga **+ New → Database → PostgreSQL** qo'shing.
+4. Ilova servisida **Variables** bo'limiga quyidagilarni yozing:
+
+   | O'zgaruvchi | Qiymat |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Railway taklif qiladi) |
+   | `SECRET_KEY` | uzun tasodifiy satr (50+ belgi) |
+   | `BIOMETRIC_KEY` | `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` natijasi |
+   | `DIRECTOR_USERNAME` | direktor logini |
+   | `DIRECTOR_PASSWORD` | direktor paroli (8+ belgi) |
+   | `DIRECTOR_NAME` | masalan `Xasanov Anvar` |
+   | `TELEGRAM_BOT_TOKEN` | ixtiyoriy, @BotFather'dan |
+
+5. **Settings → Networking → Generate Domain** — sizga `https://...up.railway.app` manzili beriladi (HTTPS bilan, kamera ishlaydi).
+6. Yuklangan fayllar (vazifa rasmlari, PDF) deploydan keyin yo'qolmasligi uchun: servisda **+ Volume** qo'shing, mount path: `/app/media`, hamda Variables'ga `RAILWAY_RUN_UID=0` yozing (volume'ga yozish ruxsati uchun).
+
+> `SECRET_KEY` va `BIOMETRIC_KEY` ni bir marta qo'ying va o'zgartirmang. Aks holda hamma tizimdan chiqib ketadi yoki yuz namunalarini o'qib bo'lmay qoladi.
+
+Sinov ma'lumotlari kerak bo'lsa (faqat bo'sh bazada): Railway servisida **⋮ → Shell** (yoki `railway run`) → `python manage.py seed_demo`.
+
+## O'z serveringizga joylash (Docker + avtomatik HTTPS)
 
 1. Domenni (masalan `maktab.uz`) server IP manziliga yo'naltiring.
 2. `backend/.env.example` faylini `backend/.env` ga nusxalang va to'ldiring: `SECRET_KEY`, `BIOMETRIC_KEY`, `POSTGRES_PASSWORD`, `DOMAIN`, `DIRECTOR_USERNAME`, `DIRECTOR_PASSWORD`, `TELEGRAM_BOT_TOKEN`.

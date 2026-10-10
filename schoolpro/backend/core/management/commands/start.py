@@ -38,6 +38,11 @@ class Command(BaseCommand):
         ok = lambda t: self.stdout.write(self.style.SUCCESS(t))  # noqa: E731
         warn = lambda t: self.stdout.write(self.style.WARNING(t))  # noqa: E731
         self.stdout.write("\n🎓  SchoolPro ishga tushirilmoqda...\n")
+        if not settings.DEBUG:
+            if not os.getenv("SECRET_KEY"):
+                warn("⚠️  SECRET_KEY o'rnatilmagan. Serverda (Railway) qayta deploy bo'lganda hamma tizimdan chiqib ketadi — Variables'ga SECRET_KEY qo'shing.")
+            if not os.getenv("BIOMETRIC_KEY"):
+                warn("⚠️  BIOMETRIC_KEY o'rnatilmagan. Yuz namunalari SECRET_KEY'dan hosil qilingan kalit bilan shifrlanadi — kalitni o'zgartirmang.")
         call_command("migrate", verbosity=0, interactive=False)
         call_command("collectstatic", verbosity=0, interactive=False)
         ok("✅ Baza tayyor")
