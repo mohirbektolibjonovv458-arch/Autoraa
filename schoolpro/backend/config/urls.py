@@ -48,6 +48,7 @@ api = [
     path("audit/", sch.audit_log),
     path("my/subjects/", sch.my_subjects),
     path("my/teachers/", sch.my_teachers),
+    path("my/teaching/", sch.my_teaching),
     path("my/grades/", hw.my_grades),
     path("my/attendance/", att.my_attendance),
     path("my/face/", att.my_face),
@@ -74,6 +75,9 @@ api = [
 
 def spa(request, *args, **kwargs):
     """React ilovasi: barcha front yo'llari index.html ga tushadi."""
+    tail = request.path.rsplit("/", 1)[-1]
+    if request.path.startswith(("/assets/", "/models/")) or "." in tail:
+        return HttpResponse("Topilmadi", status=404, content_type="text/plain; charset=utf-8")
     index = settings.FRONTEND_DIR / "index.html"
     if not index.exists():
         return HttpResponse("<h1>SchoolPro</h1><p>Frontend build topilmadi: <code>cd frontend && npm install && npm run build</code></p>", status=503)

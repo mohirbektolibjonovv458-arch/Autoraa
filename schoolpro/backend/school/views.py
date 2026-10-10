@@ -143,7 +143,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
             qs = qs.filter(subjects__id=p["subject"])
         if p.get("active") in ("0", "1"):
             qs = qs.filter(user__is_active=p["active"] == "1")
-        elif p.get("all") != "1":
+        elif p.get("all") != "1" and self.action == "list":
             qs = qs.filter(user__is_active=True)
         return qs.order_by("user__last_name", "user__first_name").distinct()
 
@@ -201,7 +201,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q) | Q(user__username__icontains=q) | Q(student_no__icontains=q) | Q(parent_phone__icontains=q))
         if p.get("active") in ("0", "1"):
             qs = qs.filter(user__is_active=p["active"] == "1")
-        elif p.get("all") != "1":
+        elif p.get("all") != "1" and self.action == "list":
             qs = qs.filter(user__is_active=True)
         return qs.order_by("user__last_name", "user__first_name")
 
@@ -654,3 +654,13 @@ def audit_log(request):
 def admins_list(request):
     return Response([{"id": u.id, "full_name": u.full_name, "role": u.role, "telegram_linked": bool(u.telegram_chat_id)}
                      for u in User.objects.filter(role__in=[Role.DIRECTOR, Role.ADMIN], is_active=True)])
+
+
+@api_view(["GET"])
+@permission_classes([IsStaff])
+def my_teaching(request):
+    """O'qituvchining biriktirishlari (vazifa formasi uchun: qaysi sinfga qaysi fan)."""
+    qs = TeachingAssignment.objects.select_related("teacher__user", "school_class", "subject")
+    if request.user.is_teacher:
+        qs = qs.filter(teacher=teacher_of(request.user))
+    return Response(TeachingAssignmentSerializer(qs, many=True).data)

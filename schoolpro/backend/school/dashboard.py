@@ -167,8 +167,8 @@ def director_dashboard(request):
         {"key": "assign", "label": "O'qituvchilarni sinflarga biriktiring", "done": TeachingAssignment.objects.exists(), "link": "/d/classes"},
         {"key": "students", "label": "O'quvchilarni qo'shing yoki import qiling", "done": StudentProfile.objects.exists(), "link": "/d/students"},
         {"key": "timetable", "label": "Dars jadvalini tuzing", "done": Lesson.objects.exists(), "link": "/d/classes"},
-        {"key": "kiosk", "label": "Darvozaga kiosk qurilmasini ulang", "done": KioskDevice.objects.exclude(token_hash="").exists(), "link": "/d/attendance/devices"},
-        {"key": "telegram", "label": "Telegram botni ulang", "done": User.objects.filter(role__in=MANAGER_ROLES, telegram_chat_id__isnull=False).exists(), "link": "/d/settings/telegram"},
+        {"key": "kiosk", "label": "Darvozaga kiosk qurilmasini ulang", "done": KioskDevice.objects.exclude(token_hash="").exists(), "link": "/d/devices"},
+        {"key": "telegram", "label": "Telegram botni ulang", "done": User.objects.filter(role__in=MANAGER_ROLES, telegram_chat_id__isnull=False).exists(), "link": "/d/telegram"},
     ]
     return {
         **_common(request.user, request),

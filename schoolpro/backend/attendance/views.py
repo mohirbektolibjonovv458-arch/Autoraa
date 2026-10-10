@@ -326,7 +326,7 @@ def _enroll(t, request, auto_approve=False):
         raise ValidationError({"detail": f"{biometrics.MIN_SAMPLES}–{biometrics.MAX_SAMPLES} ta namuna kerak"})
     vectors = [biometrics.validate_descriptor(v) for v in vectors]
     spread = biometrics.consistency(vectors)
-    if spread > 0.55:
+    if spread > 0.65:
         raise ValidationError({"detail": "Namunalar bir-biriga mos emas (kadrda boshqa odam bo'lgan bo'lishi mumkin). Qaytadan, yaxshi yorug'likda urinib ko'ring."})
     # Boshqa o'qituvchining yuziga juda o'xshash bo'lsa — ro'yxatdan o'tkazilmaydi (birovning o'rniga yozilish himoyasi)
     s = SchoolSettings.get()

@@ -146,7 +146,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "core.pagination.Pagination",
     "PAGE_SIZE": 30,
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
-    "DEFAULT_THROTTLE_RATES": {"login": "10/min", "kiosk": "60/min", "pin": "10/min"},
+    "DEFAULT_THROTTLE_RATES": {"login": "10/min", "kiosk": "120/min", "pin": "20/min"},
 }
 
 SIMPLE_JWT = {

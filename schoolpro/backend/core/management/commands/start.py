@@ -86,7 +86,9 @@ class Command(BaseCommand):
         if ip:
             ok(f"📱 Telefondan:  http://{ip}:{port}  (bir Wi-Fi tarmog'ida)")
         ok(f"🚪 Kiosk:       http://localhost:{port}/kiosk\n")
+        kw = {}
+        if os.getenv("TRUSTED_PROXY"):
+            kw = {"trusted_proxy": os.getenv("TRUSTED_PROXY"), "trusted_proxy_headers": {"x-forwarded-for", "x-forwarded-proto"},
+                  "clear_untrusted_proxy_headers": True}
         serve(application, host="0.0.0.0", port=port, threads=int(os.getenv("WEB_THREADS", "8")), ident="SchoolPro",
-              max_request_body_size=settings.MAX_UPLOAD_FILE_MB * 1024 * 1024 * settings.MAX_UPLOAD_FILES + 1024 * 1024,
-              trusted_proxy=os.getenv("TRUSTED_PROXY") or None, trusted_proxy_headers={"x-forwarded-for", "x-forwarded-proto"} if os.getenv("TRUSTED_PROXY") else None,
-              clear_untrusted_proxy_headers=True)
+              max_request_body_size=settings.MAX_UPLOAD_FILE_MB * 1024 * 1024 * settings.MAX_UPLOAD_FILES + 1024 * 1024, **kw)
