@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from core.progress import award, notify, record
 
+from . import rounds
 from .models import Attempt, Mistake, Question, Quiz
 from .serializers import QuestionPublicSerializer, QuizSerializer
 
@@ -27,13 +28,19 @@ def quiz_list(request):
         qs = qs.filter(subject__in=v.split(","))
     if v := request.query_params.get("level"):
         qs = qs.filter(level=v)
-    best = dict(Attempt.objects.filter(user=request.user, finished_at__isnull=False).values("quiz").annotate(m=Max("score")).values_list("quiz", "m"))
+    best = {}
+    for quiz_id, sc, tot in Attempt.objects.filter(user=request.user, finished_at__isnull=False).values_list("quiz", "score", "total"):
+        if tot:
+            best[quiz_id] = max(best.get(quiz_id, 0), round(100 * sc / tot))
     out = []
     for q in qs:
         d = QuizSerializer(q).data
         d["locked"] = locked(q, request.user)
-        d["best"] = round(100 * best[q.id] / q.question_count) if q.id in best and q.question_count else None
+        d["question_count"] = q.questions_per_attempt if q.generator else min(q.questions_per_attempt, q.question_count)
+        d["bank_size"] = None if q.generator else q.question_count
+        d["best"] = best.get(q.id)
         out.append(d)
+    out.sort(key=lambda d: (d["locked"], not d["generator"]))  # «har safar yangi» testlar birinchi
     return Response(out)
 
 
@@ -42,14 +49,14 @@ def quiz_start(request, pk):
     quiz = get_object_or_404(Quiz.objects.filter(Q(owner__isnull=True) | Q(owner=request.user)), pk=pk, is_published=True)
     if locked(quiz, request.user):
         return Response({"detail": "Bu test Premium tarifda mavjud.", "code": "premium_required"}, status=403)
-    questions = list(quiz.questions.all())
-    if not questions:
+    plan = rounds.build_for_quiz(quiz)
+    if not plan:
         return Response({"detail": "Bu testda hali savollar yo'q."}, status=400)
-    attempt = Attempt.objects.create(user=request.user, quiz=quiz, total=len(questions))
+    attempt = Attempt.objects.create(user=request.user, quiz=quiz, total=len(plan), answers={"plan": plan})
     return Response({
         "attempt": attempt.id,
-        "quiz": QuizSerializer(quiz).data | {"question_count": len(questions)},
-        "questions": QuestionPublicSerializer(questions, many=True).data,
+        "quiz": QuizSerializer(quiz).data | {"question_count": len(plan)},
+        "questions": rounds.public(plan),
         "started_at": attempt.started_at,
     }, status=201)
 
@@ -80,30 +87,16 @@ def quiz_submit(request, pk):
     answers = request.data.get("answers")
     if not isinstance(answers, dict):
         return Response({"detail": "Javoblar formati noto'g'ri."}, status=400)
-    questions = list(attempt.quiz.questions.all())
+    plan = attempt.answers.get("plan") or []
     now = timezone.now()
     duration = int((now - attempt.started_at).total_seconds())
     limit = attempt.quiz.time_limit_seconds
-    items, score = [], 0
-    for q in questions:
-        raw = answers.get(str(q.id))
-        chosen = raw if isinstance(raw, int) and 0 <= raw < len(q.options) else None
-        correct = chosen == q.correct_index
-        score += correct
-        items.append({"question": q.id, "text": q.text, "options": q.options, "chosen": chosen, "correct_index": q.correct_index,
-                      "correct": correct, "explanation": q.explanation, "topic": q.topic})
-        if not correct:
-            m, created = Mistake.objects.get_or_create(user=request.user, question=q)
-            if not created:
-                m.times += 1
-                m.resolved = False
-                m.save(update_fields=["times", "resolved", "updated"])
-        else:
-            Mistake.objects.filter(user=request.user, question=q, resolved=False).update(resolved=True)
+    items, score = rounds.grade(plan, answers, request.user)
+    questions = plan
     attempt.score, attempt.total = score, len(questions)
     attempt.finished_at, attempt.duration_seconds = now, duration
     attempt.overtime = bool(limit and duration > limit + GRACE_SECONDS)
-    attempt.answers = {"items": [{k: v for k, v in i.items() if k in ("question", "chosen", "correct", "topic")} for i in items]}
+    attempt.answers = {"plan": plan, "items": [{k: v for k, v in i.items() if k in ("question", "chosen", "correct", "topic")} for i in items]}
     attempt.save()
     record(request.user, "quiz")
     award(request.user, "first_quiz")

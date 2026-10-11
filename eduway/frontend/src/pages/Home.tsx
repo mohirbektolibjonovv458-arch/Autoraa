@@ -5,6 +5,7 @@ import { useToast } from "../components/Toast";
 import { patch } from "../lib/api";
 import { useApi } from "../lib/hooks";
 import { InstallBanner, PushCard } from "../components/Install";
+import { StartPath } from "../components/StartPath";
 import { fmtDate, greeting, SUBJECT_LABEL, WEEKDAYS } from "../lib/format";
 
 const REC_ICONS: Record<string, any> = { user: UserIcon, compass: Compass, target: Target, book: BookOpen, refresh: RefreshCw, building: Building2 };
@@ -67,6 +68,9 @@ export default function Home() {
         </div>
       </section>
 
+      <StartPath d={d} />
+
+      <h2 className="-mb-2 text-lg font-bold">Bugun</h2>
       {/* Kunlik challenge va fokus */}
       <section className="grid grid-cols-2 gap-3 animate-fade-up [animation-delay:.03s]">
         <Link to="/challenge" className={cx("relative overflow-hidden rounded-3xl p-4 text-white shadow-lift transition hover:-translate-y-0.5", d.challenge_done ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-amber-400 via-rose-500 to-fuchsia-600")}>
@@ -88,6 +92,7 @@ export default function Home() {
       <InstallBanner />
       <PushCard compact />
 
+      <h2 className="-mb-2 text-lg font-bold">AI yordamchi</h2>
       {/* AI tezkor kirish */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr] animate-fade-up [animation-delay:.05s]">
         <Link to="/ai" className="card group flex items-center gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-lift">

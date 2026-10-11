@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, PartyPopper } from "lucide-react";
 import { cx, Empty, ErrorState, PageHeader, PageSkeleton, Spinner } from "../../components/ui";
@@ -14,9 +14,14 @@ export default function Mistakes() {
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  // har safar variantlar tartibi boshqacha; javob serverga asl indeks bilan yuboriladi
+  const shuffled = useMemo(() => (data || []).slice(0, 10).map((m) => {
+    const perm = m.question.options.map((_: string, i: number) => i).sort(() => Math.random() - 0.5);
+    return { ...m, perm };
+  }), [data]);
   if (loading) return <PageSkeleton />;
   if (error || !data) return <ErrorState error={error} onRetry={reload} />;
-  const batch = data.slice(0, 10);
+  const batch = shuffled;
   const submit = async () => {
     setBusy(true);
     try { setResult(await post("/learn/mistakes/submit/", { answers })); window.scrollTo({ top: 0, behavior: "smooth" }); }
@@ -39,8 +44,8 @@ export default function Mistakes() {
             <div key={m.id} className="card p-4">
               <p className="text-xs font-semibold text-sub">{SUBJECT_LABEL[m.subject]} · {m.quiz} · {m.times} marta xato</p>
               <p className="mt-1 font-semibold">{i + 1}. {m.question.text}</p>
-              <div className="mt-3 grid gap-2">{m.question.options.map((o: string, j: number) => (
-                <button key={j} onClick={() => setAnswers({ ...answers, [m.question.id]: j })} className={cx("rounded-xl border px-3 py-2.5 text-left text-sm font-medium", answers[m.question.id] === j ? "border-brand bg-brand-soft" : "border-line hover:border-brand/40")}>{o}</button>
+              <div className="mt-3 grid gap-2">{m.perm.map((orig: number) => (
+                <button key={orig} onClick={() => setAnswers({ ...answers, [m.question.id]: orig })} className={cx("rounded-xl border px-3 py-2.5 text-left text-sm font-medium", answers[m.question.id] === orig ? "border-brand bg-brand-soft" : "border-line hover:border-brand/40")}>{m.question.options[orig]}</button>
               ))}</div>
             </div>
           ))}

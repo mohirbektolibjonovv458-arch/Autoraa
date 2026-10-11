@@ -8,6 +8,7 @@ import { Logo } from "./Logo";
 import { cx } from "./ui";
 import { SearchModal } from "./Search";
 import { syncPush } from "../lib/pwa";
+import { InstallButton } from "./Install";
 
 const TABS = [
   { to: "/home", label: "Bosh sahifa", icon: Home, match: ["/home"] },
@@ -43,7 +44,7 @@ export function useUnread() {
 function ThemeButton() {
   const { theme, toggle } = useTheme();
   return (
-    <button onClick={toggle} aria-label="Mavzuni almashtirish" className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface hover:bg-muted">
+    <button onClick={toggle} aria-label="Mavzuni almashtirish" className="hidden sm:grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface hover:bg-muted">
       {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </button>
   );
@@ -113,6 +114,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <Link to="/home" className="lg:hidden"><Logo /></Link>
             <div className="hidden lg:block" />
             <div className="flex items-center gap-2">
+              <InstallButton className="btn-primary btn-sm h-10 px-3" label="O'rnatish" />
               <button onClick={() => setSearch(true)} aria-label="Qidirish" className="flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sub hover:bg-muted">
                 <SearchIcon className="h-5 w-5" /><span className="hidden text-sm sm:inline">Qidirish</span><kbd className="hidden rounded-md bg-muted px-1.5 text-[11px] font-semibold lg:inline">Ctrl K</kbd>
               </button>

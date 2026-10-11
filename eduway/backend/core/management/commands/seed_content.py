@@ -8,7 +8,7 @@ from catalog.models import Grant, Program, University
 from core.seed.careers import CAREERS
 from core.seed.catalog import GRANTS, UNIVERSITIES
 from core.seed.lessons import LESSONS
-from core.seed.quizzes import QUIZZES
+from core.seed.quizzes import EXTRA, GENERATED, QUIZZES
 from learning.models import Lesson, Question, Quiz
 
 
@@ -51,6 +51,23 @@ class Command(BaseCommand):
                                          explanation=item["explanation"], topic=item["topic"], order=i))
                 Question.objects.bulk_create(rows)
                 n["quizzes"] += 1
+        # mavjud testlarga yangi savollar (matni bo'yicha takrorlanmaydi) — eski bazalar ham yangilanadi
+        for title, extra in EXTRA.items():
+            quiz = Quiz.objects.filter(title=title, owner=None).first()
+            if not quiz:
+                continue
+            have = set(quiz.questions.values_list("text", flat=True))
+            start = quiz.questions.count()
+            for i, item in enumerate(x for x in extra if x["text"] not in have):
+                options, correct = shuffled(item, rnd)
+                Question.objects.create(quiz=quiz, text=item["text"], options=options, correct_index=correct,
+                                        explanation=item["explanation"], topic=item["topic"], order=start + i)
+                n["questions"] = n.get("questions", 0) + 1
+            if quiz.questions_per_attempt > 8:
+                Quiz.objects.filter(pk=quiz.pk).update(questions_per_attempt=8)
+        for g in GENERATED:
+            _, created = Quiz.objects.get_or_create(title=g["title"], owner=None, defaults=g)
+            n["generated"] = n.get("generated", 0) + created
         for l in LESSONS:
             data = dict(l)
             quiz_title = data.pop("quiz_title")

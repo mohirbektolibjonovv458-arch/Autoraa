@@ -44,7 +44,7 @@ export default function Practice() {
   const [gen, setGen] = useState(false);
   return (
     <>
-      <PageHeader title="Testlar" subtitle="Vaqt bilan ishlanadigan testlar va xatolar tahlili" back="/learn" action={<button className="btn-primary btn-sm" onClick={() => setGen(true)}><Wand2 className="h-4 w-4" /> AI test</button>} />
+      <PageHeader title="Testlar" subtitle="Har urinishda savollar, tartib va variantlar almashadi — yodlab bo'lmaydi" back="/learn" action={<button className="btn-primary btn-sm" onClick={() => setGen(true)}><Wand2 className="h-4 w-4" /> AI test</button>} />
       <Link to="/practice/mistakes" className="card mb-4 flex items-center gap-3 p-4 hover:shadow-lift">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-rose-500/10 text-rose-500"><RefreshCw className="h-5 w-5" /></div>
         <div className="flex-1"><p className="font-bold">Xatolar ustida ishlash</p><p className="text-sm text-sub">Noto'g'ri javob bergan savollaringizni qayta yeching</p></div>
@@ -68,6 +68,7 @@ export default function Practice() {
               <Badge tone="muted">{q.question_count} savol</Badge>
               {q.time_limit_seconds && <Badge tone="muted"><Clock className="h-3 w-3" /> {Math.round(q.time_limit_seconds / 60)} daq</Badge>}
               {q.owner && <Badge>AI</Badge>}
+              {q.generator ? <Badge tone="ok">♾ Har safar yangi savollar</Badge> : q.bank_size > q.question_count && <Badge tone="ok">{q.bank_size} savoldan tasodifiy</Badge>}
             </div>
           </Link>
         ))}

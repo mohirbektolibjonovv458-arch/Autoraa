@@ -38,9 +38,8 @@ with sync_playwright() as pw:
     shot(page, "01-splash")
     page.wait_for_url("**/welcome")
     shot(page, "02-welcome")
-    for _ in range(3):
-        page.get_by_role("button", name="Davom etish").click()
-    page.get_by_role("link", name="Boshlash — bepul").click()
+    expect(page.get_by_text("EduWay AI nima qiladi?")).to_be_visible()
+    page.get_by_role("link", name="Bepul boshlash").first.click()
     page.get_by_label("Ism").fill("Malika")
     page.get_by_label("Familiya").fill("Karimova")
     page.get_by_label("Email").fill(email)

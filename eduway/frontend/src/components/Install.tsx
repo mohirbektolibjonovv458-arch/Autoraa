@@ -23,7 +23,17 @@ export function InstallGuide({ open, onClose }: { open: boolean; onClose: () => 
         <LogoMark className="h-12 w-12" />
         <div><p className="font-bold">EduWay AI</p><p className="text-sm text-sub">Bosh ekranda ilova sifatida ochiladi, bildirishnomalar keladi</p></div>
       </div>
-      {p.ios ? (
+      {p.inApp ? (
+        <>
+          <p className="mb-3 rounded-xl bg-warn/15 p-3 text-sm">Sayt Telegram yoki Instagram ichida ochilgan. U yerda ilovani o'rnatib bo'lmaydi — avval oddiy brauzerda oching.</p>
+          <ol className="space-y-3">
+            <Step n={1}>Yuqoridagi <b>⋮</b> yoki <b>…</b> menyusini bosing</Step>
+            <Step n={2}><b>«Открыть в браузере» / «Open in browser»</b> ni tanlang ({p.ios ? "Safari" : "Chrome"})</Step>
+            <Step n={3}>Ochilgan sahifada yana <b>«Yuklab olish»</b> tugmasini bosing</Step>
+          </ol>
+          <button className="btn-outline mt-4 w-full" onClick={() => { navigator.clipboard?.writeText(location.origin); }}>Havolani nusxalash</button>
+        </>
+      ) : p.ios ? (
         <>
           {!p.iosSafari && <p className="mb-3 rounded-xl bg-warn/15 p-3 text-sm">iPhone'da o'rnatish uchun saytni <b>Safari</b> brauzerida oching.</p>}
           <ol className="space-y-3">

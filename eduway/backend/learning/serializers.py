@@ -27,9 +27,16 @@ class QuestionFullSerializer(serializers.ModelSerializer):
 class QuizSerializer(serializers.ModelSerializer):
     question_count = serializers.IntegerField(read_only=True)
 
+    def validate_generator(self, v):
+        from .generators import GENERATORS
+
+        if v and v not in GENERATORS:
+            raise serializers.ValidationError("Noma'lum generator: " + ", ".join(GENERATORS))
+        return v
+
     class Meta:
         model = Quiz
-        fields = ["id", "title", "subject", "topic", "level", "description", "time_limit_seconds", "is_premium", "is_published", "question_count", "owner", "created"]
+        fields = ["id", "title", "subject", "topic", "level", "description", "time_limit_seconds", "is_premium", "is_published", "question_count", "owner", "generator", "questions_per_attempt", "created"]
         read_only_fields = ["owner"]
 
 

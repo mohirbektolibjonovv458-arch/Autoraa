@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bell, Bookmark, ChevronRight, Compass, Crown, Flame, GraduationCap, Heart, LayoutDashboard, LineChart, LogOut, Settings, Target, Trophy } from "lucide-react";
+import { Info, Bell, Bookmark, ChevronRight, Compass, Crown, Flame, GraduationCap, Heart, LayoutDashboard, LineChart, LogOut, Settings, Target, Trophy } from "lucide-react";
 import { Badge, PageHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { fmtDate } from "../lib/format";
@@ -17,7 +17,8 @@ export default function Profile() {
     { to: "/grants/saved", icon: Bookmark, label: "Grantlarim" },
     { to: "/notifications", icon: Bell, label: "Bildirishnomalar" },
     { to: "/premium", icon: Crown, label: user.is_premium ? "Premium obuna" : "Premium'ga o'tish" },
-    { to: "/settings", icon: Settings, label: "Profil va sozlamalar" },
+    { to: "/settings", icon: Settings, label: "Profil, ilova va bildirishnomalar" },
+    { to: "/about", icon: Info, label: "Ilova haqida va yordam" },
     ...(user.is_admin ? [{ to: "/admin", icon: LayoutDashboard, label: "Admin panel" }] : []),
   ];
   return (

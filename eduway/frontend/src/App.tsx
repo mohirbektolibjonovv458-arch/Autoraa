@@ -41,6 +41,7 @@ const Admin = lazy(() => import("./pages/admin/Admin"));
 const Focus = lazy(() => import("./pages/Focus"));
 const Challenge = lazy(() => import("./pages/Challenge"));
 const Placement = lazy(() => import("./pages/english/Placement"));
+const About = lazy(() => import("./pages/About"));
 
 function Protected({ children, admin }: { children: ReactNode; admin?: boolean }) {
   const { user, ready } = useAuth();
@@ -69,6 +70,7 @@ export default function App() {
       <Route path="/welcome" element={<Welcome />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/about" element={<Suspense fallback={<Splash />}><About /></Suspense>} />
       <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
       <Route path="/admin/*" element={<Protected admin><Suspense fallback={<div className="p-6"><PageSkeleton /></div>}><Admin /></Suspense></Protected>} />
       <Route element={<Protected><AppShell /></Protected>}>

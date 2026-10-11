@@ -29,6 +29,8 @@ export const platform = () => {
     ios,
     android: /Android/i.test(ua),
     iosSafari: ios && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|YaBrowser/i.test(ua),
+    // Telegram, Instagram, Facebook ichidagi brauzerlar ilova o'rnatishga ruxsat bermaydi
+    inApp: /Telegram|Instagram|FBAN|FBAV|Line\/|; wv\)|TikTok/i.test(ua),
     standalone: window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true,
   };
 };

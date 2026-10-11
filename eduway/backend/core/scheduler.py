@@ -37,7 +37,7 @@ def evening_reminders():
 
     today = timezone.localdate()
     n = 0
-    done_challenge = set(DailyChallenge.objects.filter(date=today).values_list("user_id", flat=True))
+    done_challenge = set(DailyChallenge.objects.filter(date=today, completed=True).values_list("user_id", flat=True))
     for u in User.objects.filter(is_active=True, push_reminders=True, push_subscriptions__isnull=False).distinct():
         if u.last_active == today:
             continue

@@ -29,15 +29,15 @@ with sync_playwright() as pw:
     page.set_default_timeout(15000)
 
     page.goto(BASE + "/welcome")
-    expect(page.get_by_role("button", name="Yuklab olish")).to_be_visible()
+    expect(page.get_by_role("button", name="Yuklab olish", exact=True)).to_be_visible()
     # service worker ro'yxatdan o'tadi (o'rnatish uchun shart)
     page.wait_for_function("navigator.serviceWorker && navigator.serviceWorker.controller !== undefined")
     ok = page.evaluate("navigator.serviceWorker.ready.then(r => !!r.active)")
     assert ok, "service worker faol emas"
     manifest = page.evaluate("fetch('/manifest.webmanifest').then(r => r.json())")
     assert any(i["sizes"] == "512x512" for i in manifest["icons"]), manifest
-    page.get_by_role("button", name="Yuklab olish").click()
-    expect(page.get_by_text("Telefonga o'rnatish")).to_be_visible()
+    page.get_by_role("button", name="Yuklab olish", exact=True).click()
+    expect(page.get_by_role("dialog").get_by_text("Telefonga o'rnatish")).to_be_visible()
     shot(page, "40-install-guide")
     page.get_by_role("button", name="Tushunarli").click()
 

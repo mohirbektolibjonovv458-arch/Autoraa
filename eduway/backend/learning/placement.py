@@ -1,7 +1,5 @@
 """Ingliz tili darajasini aniqlash testi (A1–C1). Har darajada 5 ta savol.
 Natija — taxminiy CEFR darajasi, rasmiy sertifikat emas."""
-import random
-
 LEVELS = ["A1", "A2", "B1", "B2", "C1"]
 
 # (daraja, savol, [to'g'ri javob birinchi, ...boshqalar])
@@ -31,27 +29,65 @@ _BANK = [
     ("C1", "It's high time we ___ a decision.", ["made", "make", "will make", "have made"]),
     ("C1", "The findings ___ doubt on the earlier theory.", ["cast", "threw", "put", "made"]),
     ("C1", "Were the company ___ its prices, sales would fall.", ["to raise", "raising", "raise", "raised"]),
+    # qo'shimcha savollar — har testda har darajadan 5 tasi tasodifiy tanlanadi
+    ("A1", "My sister ___ coffee every morning.", ["drinks", "drink", "drinking", "is drink"]),
+    ("A1", "We ___ at home now.", ["are", "is", "be", "am"]),
+    ("A1", "This is ___ apple.", ["an", "a", "the two", "some a"]),
+    ("A1", "I can't find ___ keys.", ["my", "me", "I", "mine the"]),
+    ("A1", "The opposite of «big» is ___.", ["small", "tall", "long", "fast"]),
+    ("A2", "She has never ___ to London.", ["been", "go", "went", "going"]),
+    ("A2", "I'm going ___ my grandparents this weekend.", ["to visit", "visit", "visiting", "visited"]),
+    ("A2", "There isn't ___ milk in the fridge.", ["any", "some", "many", "a"]),
+    ("A2", "He is the ___ student in our class.", ["tallest", "taller", "most tall", "tall"]),
+    ("A2", "We usually go to school ___ bus.", ["by", "on the", "with", "in"]),
+    ("B1", "I wish I ___ more free time.", ["had", "have", "will have", "having"]),
+    ("B1", "She's been learning English ___ three years.", ["for", "since", "during", "from"]),
+    ("B1", "The book ___ I bought yesterday is great.", ["that", "who", "what", "whose"]),
+    ("B1", "You ___ wear a uniform — it's optional.", ["don't have to", "mustn't", "can't", "shouldn't to"]),
+    ("B1", "He suggested ___ to the museum.", ["going", "to go", "go", "we going"]),
+    ("B2", "The project ___ by the end of next month.", ["will have been completed", "will complete", "is completing", "has completed"]),
+    ("B2", "Choose the closest meaning of «ambiguous».", ["having more than one possible meaning", "very important", "clearly stated", "easy to do"]),
+    ("B2", "She apologised ___ late.", ["for being", "to be", "for be", "of being"]),
+    ("B2", "Hardly anyone came, ___?", ["did they", "didn't they", "did anyone not", "came they"]),
+    ("B2", "If he hadn't missed the train, he ___ here now.", ["would be", "will be", "would have been", "is"]),
+    ("C1", "Little ___ that the decision would change everything.", ["did they realise", "they realised", "they did realise", "realised they"]),
+    ("C1", "Choose the closest meaning of «ubiquitous».", ["found everywhere", "very rare", "extremely old", "difficult to understand"]),
+    ("C1", "The report was ___ criticised for its lack of evidence.", ["widely", "largely of", "broad", "wide"]),
+    ("C1", "Not until the results were published ___ the scale of the problem.", ["did we understand", "we understood", "we did understand", "understood we"]),
+    ("C1", "She is ___ to succeed, given her talent and work ethic.", ["bound", "doomed for", "likely of", "sure of"]),
 ]
+PER_LEVEL = 5
 
-_rnd = random.Random(2026)
-QUESTIONS = []
-for i, (level, text, opts) in enumerate(_BANK):
-    order = list(range(len(opts)))
-    _rnd.shuffle(order)
-    QUESTIONS.append({"id": i, "level": level, "text": text, "options": [opts[j] for j in order], "correct": order.index(0)})
+QUESTIONS = [{"id": i, "level": level, "text": text, "options": opts, "answer": opts[0]} for i, (level, text, opts) in enumerate(_BANK)]
 
 
-def public_questions():
-    return [{"id": q["id"], "level": q["level"], "text": q["text"], "options": q["options"]} for q in QUESTIONS]
+def public_questions(rnd):
+    """Har safar: daraja ichida savollar tartibi va variantlar aralashtiriladi (darajalar pastdan yuqoriga)."""
+    out = []
+    for level in LEVELS:
+        qs = [q for q in QUESTIONS if q["level"] == level]
+        for q in rnd.sample(qs, min(PER_LEVEL, len(qs))):
+            opts = list(q["options"])
+            rnd.shuffle(opts)
+            out.append({"id": q["id"], "level": level, "text": q["text"], "options": opts})
+    return out
 
 
 def evaluate(answers):
-    """answers: {"<id>": index}. Daraja — pastdan boshlab 60%+ natija ketma-ket saqlangan eng yuqori bosqich."""
+    """answers: {"<id>": tanlangan variant matni} — faqat foydalanuvchiga ko'rsatilgan savollar (o'tkazilganlari bo'sh qiymat bilan).
+    Daraja — pastdan boshlab 60%+ natija ketma-ket saqlangan eng yuqori bosqich."""
     per = {l: [0, 0] for l in LEVELS}
-    for q in QUESTIONS:
+    by_id = {q["id"]: q for q in QUESTIONS}
+    for key, value in answers.items():
+        q = by_id.get(int(key)) if str(key).isdigit() else None
+        if not q:
+            continue
         per[q["level"]][1] += 1
-        if answers.get(str(q["id"])) == q["correct"]:
+        if value == q["answer"]:
             per[q["level"]][0] += 1
+    for l in LEVELS:  # ko'rsatilmagan daraja — 0% (bo'sh javoblar yuborilmagan bo'lsa)
+        if per[l][1] == 0:
+            per[l][1] = PER_LEVEL
     level = None
     for l in LEVELS:
         ok, total = per[l]

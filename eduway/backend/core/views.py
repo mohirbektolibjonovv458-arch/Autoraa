@@ -96,7 +96,7 @@ def dashboard(request):
         "recommendations": recs[:4],
         "unread": Notification.objects.filter(user=u, read=False).count(),
         "focus": {"today": act[today].focus_minutes if today in act else 0, "goal": u.daily_minutes},
-        "challenge_done": DailyChallenge.objects.filter(user=u, date=today).exists(),
+        "challenge_done": DailyChallenge.objects.filter(user=u, date=today, completed=True).exists(),
         "ai": {"configured": service.is_configured(), "used_today": service.used_today(u), "limit": service.daily_limit(u)},
     })
 

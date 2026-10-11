@@ -21,14 +21,14 @@ export default function Placement() {
   const toast = useToast();
   const [started, setStarted] = useState(false);
   const [i, setI] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   if (loading) return <PageSkeleton />;
   if (error || !data) return <ErrorState error={error} onRetry={reload} />;
   const qs = data.questions;
 
-  const submit = async (final: Record<number, number>) => {
+  const submit = async (final: Record<number, string>) => {
     setBusy(true);
     try { const r = await post("/learn/placement/submit/", { answers: final }); setResult(r); refresh(); }
     catch (e: any) { toast(e.message, "bad"); } finally { setBusy(false); }
@@ -67,7 +67,7 @@ export default function Placement() {
   );
 
   const q = qs[i];
-  const next = (ans: Record<number, number>) => (i < qs.length - 1 ? setI(i + 1) : submit(ans));
+  const next = (ans: Record<number, string>) => (i < qs.length - 1 ? setI(i + 1) : submit(ans));
   return (
     <div className="mx-auto max-w-xl">
       <PageHeader title="Darajani aniqlash" subtitle={`${i + 1} / ${qs.length}`} back="/english" />
@@ -76,11 +76,11 @@ export default function Placement() {
         <h1 className="text-2xl font-bold leading-snug">{q.text}</h1>
         <div className="mt-6 space-y-2.5">
           {q.options.map((o: string, j: number) => (
-            <button key={j} disabled={busy} onClick={() => { const a = { ...answers, [q.id]: j }; setAnswers(a); setTimeout(() => next(a), 220); }}
-              className={cx("w-full rounded-2xl border p-4 text-left font-medium transition", answers[q.id] === j ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-brand/40")}>{o}</button>
+            <button key={j} disabled={busy} onClick={() => { const a = { ...answers, [q.id]: o }; setAnswers(a); setTimeout(() => next(a), 220); }}
+              className={cx("w-full rounded-2xl border p-4 text-left font-medium transition", answers[q.id] === o ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-brand/40")}>{o}</button>
           ))}
         </div>
-        <button className="btn-ghost mt-4 w-full text-sub" disabled={busy} onClick={() => next(answers)}>{busy ? <Spinner /> : "Bilmayman — o'tkazib yuborish"}</button>
+        <button className="btn-ghost mt-4 w-full text-sub" disabled={busy} onClick={() => { const a = { ...answers, [q.id]: "" }; setAnswers(a); next(a); }}>{busy ? <Spinner /> : "Bilmayman — o'tkazib yuborish"}</button>
       </div>
     </div>
   );

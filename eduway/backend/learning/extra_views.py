@@ -12,9 +12,8 @@ from rest_framework.response import Response
 from core.models import ActivityDay
 from core.progress import award, notify, record
 
-from . import placement
-from .models import DailyChallenge, FocusSession, Mistake, Question, StudyTask
-from .serializers import QuestionPublicSerializer
+from . import placement, rounds
+from .models import DailyChallenge, FocusSession, Question, StudyTask
 
 FOCUS_MIN, FOCUS_MAX = 5, 120
 FOCUS_DAILY_CAP = 600  # kuniga ko'pi bilan 10 soat hisobga olinadi
@@ -101,67 +100,73 @@ def focus_cancel(request, pk):
 
 # --- Kunlik challenge ---
 
-def _challenge_questions(user, date):
-    pool = list(Question.objects.filter(quiz__is_published=True, quiz__is_premium=False, quiz__owner__isnull=True)
-                .select_related("quiz").order_by("id").values_list("id", flat=True))
-    rnd = random.Random(f"{user.id}:{date.isoformat()}")
-    ids = rnd.sample(pool, min(CHALLENGE_SIZE, len(pool)))
-    qmap = {q.id: q for q in Question.objects.filter(pk__in=ids).select_related("quiz")}
-    return [qmap[i] for i in ids if i in qmap]
+CHALLENGE_GENERATORS = ["percent", "linear", "quadratic", "fractions", "physics", "informatics", "logic"]
+
+
+def _build_challenge(user):
+    """Har bir foydalanuvchiga har kuni boshqa savollar: 2 ta generator savoli + 3 ta bazadan (tasodifiy fanlar)."""
+    rnd = random.SystemRandom()
+    plan = []
+    for name in rnd.sample(CHALLENGE_GENERATORS, 2):
+        plan += rounds.from_generator(rnd, name, 1)
+    pool = list(Question.objects.filter(quiz__is_published=True, quiz__is_premium=False, quiz__owner__isnull=True).values_list("id", flat=True))
+    ids = rnd.sample(pool, min(CHALLENGE_SIZE - len(plan), len(pool)))
+    plan += rounds.from_questions(rnd, Question.objects.filter(pk__in=ids))
+    rnd.shuffle(plan)
+    return plan
+
+
+def _today_challenge(user):
+    today = timezone.localdate()
+    ch = DailyChallenge.objects.filter(user=user, date=today).first()
+    if ch:
+        return ch
+    try:
+        with transaction.atomic():
+            return DailyChallenge.objects.create(user=user, date=today, plan=_build_challenge(user))
+    except IntegrityError:  # parallel so'rov allaqachon yaratgan
+        return DailyChallenge.objects.get(user=user, date=today)
 
 
 @api_view(["GET"])
 def challenge(request):
     u = request.user
-    today = timezone.localdate()
-    done = DailyChallenge.objects.filter(user=u, date=today).first()
-    streak = DailyChallenge.objects.filter(user=u).count()
-    if done:
-        return Response({"date": today, "done": True, "score": done.score, "total": done.total, "items": done.answers.get("items", []), "count": streak})
-    qs = _challenge_questions(u, today)
-    return Response({"date": today, "done": False, "count": streak,
-                     "questions": [{**QuestionPublicSerializer(q).data, "subject": q.quiz.subject} for q in qs]})
+    ch = _today_challenge(u)
+    count = DailyChallenge.objects.filter(user=u, completed=True).count()
+    if ch.completed:
+        return Response({"date": ch.date, "done": True, "score": ch.score, "total": ch.total, "items": ch.answers.get("items", []), "count": count})
+    return Response({"date": ch.date, "done": False, "count": count, "questions": rounds.public(ch.plan)})
 
 
 @api_view(["POST"])
 def challenge_submit(request):
     u = request.user
-    today = timezone.localdate()
     answers = request.data.get("answers")
     if not isinstance(answers, dict):
         return Response({"detail": "Javoblar formati noto'g'ri."}, status=400)
-    qs = _challenge_questions(u, today)
-    items, score = [], 0
-    for q in qs:
-        raw = answers.get(str(q.id))
-        chosen = raw if isinstance(raw, int) and 0 <= raw < len(q.options) else None
-        correct = chosen == q.correct_index
-        score += correct
-        items.append({"question": q.id, "text": q.text, "options": q.options, "chosen": chosen, "correct_index": q.correct_index,
-                      "correct": correct, "explanation": q.explanation, "topic": q.topic})
-        if not correct:
-            m, created = Mistake.objects.get_or_create(user=u, question=q)
-            if not created:
-                Mistake.objects.filter(pk=m.pk).update(times=m.times + 1, resolved=False)
-    try:
-        with transaction.atomic():
-            DailyChallenge.objects.create(user=u, date=today, score=score, total=len(qs), answers={"items": items})
-    except IntegrityError:
-        return Response({"detail": "Bugungi challenge allaqachon bajarilgan."}, status=400)
+    with transaction.atomic():
+        ch = DailyChallenge.objects.select_for_update().filter(user=u, date=timezone.localdate()).first()
+        if not ch:
+            return Response({"detail": "Avval challenge'ni oching."}, status=400)
+        if ch.completed:
+            return Response({"detail": "Bugungi challenge allaqachon bajarilgan."}, status=400)
+        items, score = rounds.grade(ch.plan, answers, u)
+        ch.completed, ch.score, ch.total, ch.answers = True, score, len(items), {"items": items}
+        ch.save()
     xp = 15 + 5 * score
     record(u, "quiz", xp=xp)
     award(u, "challenge_1")
-    count = DailyChallenge.objects.filter(user=u).count()
+    count = DailyChallenge.objects.filter(user=u, completed=True).count()
     if count >= 7:
         award(u, "challenge_7")
-    return Response({"score": score, "total": len(qs), "xp": xp, "items": items, "count": count})
+    return Response({"score": score, "total": len(items), "xp": xp, "items": items, "count": count})
 
 
 # --- Daraja aniqlash ---
 
 @api_view(["GET"])
 def placement_test(request):
-    return Response({"questions": placement.public_questions(), "current": request.user.english_level})
+    return Response({"questions": placement.public_questions(random.SystemRandom()), "current": request.user.english_level})
 
 
 @api_view(["POST"])

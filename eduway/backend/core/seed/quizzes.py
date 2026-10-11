@@ -140,3 +140,83 @@ QUIZZES = [
                "Matnda «many cities» deyilgan, lekin faqat Osiyo haqida da'vo ham, inkor ham yo'q. Ehtiyot bo'ling: bunday holatda ko'pincha Not Given.", "True/False/Not Given"),
          ]),
 ]
+
+
+# Mavjud testlarga qo'shimcha savollar: bazasi kattaroq bo'lsa, har urinishda boshqa savollar to'plami chiqadi.
+EXTRA = {
+    "Present Simple vs Present Continuous": [
+        Q("My brother usually ___ football on Sundays.", ["plays", "is playing", "play", "played"], 0, "«usually» — odat → Present Simple, 3-shaxs: plays.", "Present Simple"),
+        Q("Be quiet! The baby ___.", ["is sleeping", "sleeps", "sleep", "slept"], 0, "Hozir bo'layotgan holat → Present Continuous.", "Present Continuous"),
+        Q("The shop ___ at 9 a.m. every day.", ["opens", "is opening", "open", "opening"], 0, "Jadval va doimiy holat → Present Simple.", "Present Simple"),
+        Q("What ___ you ___ right now?", ["are / doing", "do / do", "does / do", "is / doing"], 0, "«right now» → Present Continuous: What are you doing?", "Present Continuous"),
+        Q("He ___ understand the question.", ["doesn't", "don't", "isn't", "not"], 0, "Present Simple inkori, 3-shaxs: doesn't + V.", "Present Simple"),
+        Q("This week I ___ for my exams.", ["am studying", "study", "studies", "studied"], 0, "Vaqtinchalik holat (this week) → Present Continuous.", "Present Continuous"),
+    ],
+    "Articles: a, an, the": [
+        Q("She wants to be ___ engineer.", ["an", "a", "the", "—"], 0, "Kasb oldidan a/an; «engineer» unli tovush bilan → an.", "a / an"),
+        Q("___ Amazon is the longest river in South America.", ["The", "A", "An", "—"], 0, "Daryo nomlari oldidan «the».", "the"),
+        Q("I usually have ___ breakfast at 7.", ["—", "a", "the", "an"], 0, "Ovqatlanish nomlari (breakfast, lunch) oldidan artikl qo'yilmaydi.", "Zero article"),
+        Q("He bought ___ useful book.", ["a", "an", "the", "—"], 0, "«useful» [ju:] undosh tovush bilan → a.", "a / an"),
+        Q("This is ___ best day of my life!", ["the", "a", "an", "—"], 0, "Orttirma daraja oldidan «the».", "the"),
+        Q("I speak ___ English and ___ Russian.", ["— / —", "the / the", "an / a", "a / a"], 0, "Til nomlari oldidan artikl qo'yilmaydi.", "Zero article"),
+    ],
+    "Past Simple vs Present Perfect": [
+        Q("I ___ my homework. Can I go out now?", ["have finished", "finished", "finish", "was finishing"], 0, "Natija hozir muhim → Present Perfect.", "Present Perfect"),
+        Q("She ___ in Paris in 2019.", ["lived", "has lived", "lives", "has been living"], 0, "Aniq o'tgan yil → Past Simple.", "Past Simple"),
+        Q("They haven't arrived ___.", ["yet", "already", "ago", "since"], 0, "Inkor va so'roqda «yet».", "Present Perfect"),
+        Q("We met two years ___.", ["ago", "before now since", "for", "yet"], 0, "«ago» — Past Simple bilan.", "Past Simple"),
+        Q("How long ___ you known him?", ["have", "did", "do", "are"], 0, "How long + Present Perfect: How long have you known...?", "since / for"),
+        Q("I ___ him yesterday at the station.", ["saw", "have seen", "see", "have saw"], 0, "«yesterday» → Past Simple.", "Past Simple"),
+    ],
+    "Conditionals (0, 1, 2)": [
+        Q("If you mix red and white, you ___ pink.", ["get", "will got", "would get", "got"], 0, "Zero conditional — umumiy haqiqat.", "Zero conditional"),
+        Q("If she ___ hard, she will pass.", ["studies", "will study", "studied", "would study"], 0, "First conditional: If + Present Simple.", "First conditional"),
+        Q("If I ___ taller, I would play basketball.", ["were", "am", "will be", "be"], 0, "Second conditional: If + Past (were).", "Second conditional"),
+        Q("What would you do if you ___ the lottery?", ["won", "win", "will win", "would win"], 0, "Xayoliy holat → If + Past Simple.", "Second conditional"),
+        Q("I'll call you ___ I get home.", ["when", "if not", "unless", "would"], 0, "Aniq bo'ladigan voqea → when.", "First conditional"),
+    ],
+    "Academic Vocabulary (B2)": [
+        Q("Synonym of «crucial»:", ["essential", "optional", "minor", "careless"], 0, "crucial ≈ essential (hal qiluvchi, juda muhim).", "Synonyms"),
+        Q("«However» is used to ___.", ["show contrast", "add information", "give a reason", "give an example"], 0, "However — qarama-qarshi fikr.", "Linking words"),
+        Q("The number of students ___ steadily from 2015 to 2020.", ["rose", "raised", "arose", "rised"], 0, "rise-rose-risen (o'zgarmas fe'l) — o'sdi.", "Word forms"),
+        Q("Governments should ___ more funding to education.", ["allocate", "locate", "allow", "alleviate"], 0, "allocate funding — mablag' ajratmoq.", "Collocations"),
+        Q("Opposite of «temporary»:", ["permanent", "brief", "short-term", "recent"], 0, "temporary ↔ permanent.", "Antonyms"),
+    ],
+    "Fizika: harakat va kuch": [
+        Q("Ishning SI tizimidagi birligi:", ["Joul", "Nyuton", "Vatt", "Paskal"], 0, "Ish va energiya — joul (J).", "Birliklar"),
+        Q("Tezlik formulasi:", ["v = s / t", "v = s · t", "v = t / s", "v = m · a"], 0, "Tezlik = yo'l / vaqt.", "Tezlik"),
+        Q("Jismning inertligi nimaga bog'liq?", ["Massasiga", "Rangiga", "Hajmiga faqat", "Haroratiga"], 0, "Inertlik o'lchovi — massa.", "Nyuton qonunlari"),
+        Q("Bosim formulasi:", ["p = F / S", "p = F · S", "p = m · g", "p = S / F"], 0, "Bosim = kuch / yuza.", "Bosim"),
+    ],
+    "Informatika asoslari": [
+        Q("Qaysi biri chiqarish qurilmasi?", ["Monitor", "Sichqoncha", "Klaviatura", "Mikrofon"], 0, "Monitor ma'lumotni chiqaradi.", "Kompyuter qurilmalari"),
+        Q("Python'da ro'yxat (list) qaysi qavsda yoziladi?", ["[ ]", "( )", "{ }", "< >"], 0, "list — kvadrat qavs: [1, 2, 3].", "Dasturlash"),
+        Q("Python'da len('salom') natijasi:", ["5", "4", "6", "salom"], 0, "len — belgilar soni: s-a-l-o-m = 5.", "Dasturlash"),
+        Q("Qaysi tarmoq butun dunyo kompyuterlarini bog'laydi?", ["Internet", "Lokal tarmoq", "Bluetooth", "USB"], 0, "Internet — global tarmoq.", "Tarmoqlar"),
+    ],
+    "Mantiqiy fikrlash": [
+        Q("Barcha talabalar kitob o'qiydi. Ali — talaba. Demak:", ["Ali kitob o'qiydi", "Ali o'qimaydi", "Hamma Ali", "Xulosa chiqmaydi"], 0, "Umumiy qoida xususiy holatga qo'llanadi (sillogizm).", "Sillogizm"),
+        Q("Soat 3:15 da soat va minut millari orasidagi burchak taxminan:", ["7,5°", "0°", "15°", "90°"], 0, "Minut mili 90° da; soat mili 3:15 da 90° + 7,5° da. Farq 7,5°.", "Fazoviy fikrlash"),
+        Q("Agar A > B va B > C bo'lsa, qaysi biri to'g'ri?", ["A > C", "C > A", "A = C", "Aniqlab bo'lmaydi"], 0, "Tranzitivlik: A > B > C.", "Mantiq"),
+    ],
+}
+
+# Har urinishda yangi raqamlar bilan yaratiladigan testlar (generatorlar: learning/generators.py)
+GENERATED = [
+    dict(title="Foizlar — cheksiz mashq", subject="math", topic="Foizlar", level="easy", generator="percent", questions_per_attempt=8, time_limit_seconds=600,
+         description="Har safar yangi raqamlar bilan savollar — yodlab bo'lmaydi, faqat tushunib yechiladi."),
+    dict(title="Chiziqli tenglamalar", subject="math", topic="Algebra", level="easy", generator="linear", questions_per_attempt=8, time_limit_seconds=600,
+         description="ax + b = c ko'rinishidagi tenglamalar. Har urinishda yangi tenglamalar."),
+    dict(title="Kvadrat tenglamalar — trenajyor", subject="math", topic="Algebra", level="medium", generator="quadratic", questions_per_attempt=8, time_limit_seconds=720,
+         description="Ildizlar, Viyet teoremasi. Savollar har safar avtomatik yaratiladi."),
+    dict(title="Kasrlar bilan amallar", subject="math", topic="Arifmetika", level="medium", generator="fractions", questions_per_attempt=8, time_limit_seconds=720,
+         description="Qo'shish, ayirish, ko'paytirish. Har urinishda yangi kasrlar."),
+    dict(title="Ketma-ketliklar trenajyori", subject="logic", topic="Ketma-ketliklar", level="medium", generator="sequence", questions_per_attempt=8, time_limit_seconds=600,
+         description="Arifmetik, geometrik va kvadratlar ketma-ketligi."),
+    dict(title="Fizika masalalari — trenajyor", subject="physics", topic="Mexanika", level="medium", generator="physics", questions_per_attempt=8, time_limit_seconds=720,
+         description="Tezlik, vaqt, Nyuton qonunlari, zichlik — har safar yangi masalalar."),
+    dict(title="Sanoq sistemalari va Python", subject="informatics", topic="Asoslar", level="easy", generator="informatics", questions_per_attempt=8, time_limit_seconds=600,
+         description="Ikkilik sanoq sistemasi, // va % operatorlari, axborot o'lchovi."),
+    dict(title="Mantiq trenajyori", subject="logic", topic="Mantiq", level="medium", generator="logic", questions_per_attempt=8, time_limit_seconds=600,
+         description="Hafta kunlari, ish unumdorligi, ketma-ketliklar."),
+]

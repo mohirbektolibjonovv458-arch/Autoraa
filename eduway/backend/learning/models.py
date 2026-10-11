@@ -17,6 +17,9 @@ class Quiz(models.Model):
     level = models.CharField(max_length=6, choices=LEVELS, default="medium")
     description = models.TextField(blank=True)
     time_limit_seconds = models.PositiveIntegerField(null=True, blank=True)
+    # generator bo'lsa savollar har urinishda yangidan yaratiladi; aks holda bazadan tasodifiy tanlanadi
+    generator = models.CharField(max_length=20, blank=True)
+    questions_per_attempt = models.PositiveSmallIntegerField(default=10)
     is_premium = models.BooleanField(default=False)
     is_published = models.BooleanField(default=True)
     # AI yaratgan shaxsiy testlar faqat egasiga ko'rinadi; umumiy testlarda owner bo'sh
@@ -169,10 +172,14 @@ class FocusSession(models.Model):
 
 
 class DailyChallenge(models.Model):
+    """Kunlik challenge: savollar rejasi birinchi ochilganda yaratiladi va kun davomida o'zgarmaydi."""
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="challenges")
     date = models.DateField()
-    score = models.PositiveSmallIntegerField()
-    total = models.PositiveSmallIntegerField()
+    plan = models.JSONField(default=list)
+    completed = models.BooleanField(default=False)
+    score = models.PositiveSmallIntegerField(default=0)
+    total = models.PositiveSmallIntegerField(default=0)
     answers = models.JSONField(default=dict)
     created = models.DateTimeField(auto_now_add=True)
 

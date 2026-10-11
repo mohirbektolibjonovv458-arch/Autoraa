@@ -5,6 +5,7 @@ import { Logo } from "../../components/Logo";
 import { Field, Spinner } from "../../components/ui";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { InstallButton } from "../../components/Install";
 
 function safeNext(v: string | null) {
   return v && v.startsWith("/") && !v.startsWith("//") ? v : null;
@@ -25,7 +26,11 @@ function Shell({ title, subtitle, children, footer }: { title: string; subtitle:
         <div className="absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-fuchsia-500/30 blur-3xl" />
       </div>
       <div className="flex min-h-screen flex-col px-6 py-8">
-        <Link to="/welcome" className="lg:hidden"><Logo /></Link>
+        <div className="flex items-center justify-between gap-2">
+          <Link to="/welcome" className="lg:hidden"><Logo /></Link>
+          <span className="hidden lg:block" />
+          <InstallButton className="btn-soft btn-sm" label="Ilovani yuklab olish" />
+        </div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center animate-fade-up">
           <h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-2 text-sub">{subtitle}</p>

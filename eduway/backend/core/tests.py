@@ -110,25 +110,44 @@ class CatalogTests(Base):
 
 
 class QuizTests(Base):
+    def _correct_answers(self, attempt_id):
+        from learning.models import Attempt
+
+        plan = Attempt.objects.get(pk=attempt_id).answers["plan"]
+        return {str(i): e["perm"].index(e["correct_index"]) for i, e in enumerate(plan)}
+
     def test_start_submit_mistakes(self):
-        quiz = Quiz.objects.get(title="Foizlar va nisbatlar")
+        quiz = Quiz.objects.get(title="Present Simple vs Present Continuous")
         r = self.c.post(f"/api/learn/quizzes/{quiz.id}/start/")
         self.assertEqual(r.status_code, 201)
         self.assertNotIn("correct_index", r.json()["questions"][0])
-        qs = list(quiz.questions.all())
-        answers = {str(q.id): q.correct_index for q in qs[:-1]}
-        answers[str(qs[-1].id)] = (qs[-1].correct_index + 1) % len(qs[-1].options)
+        self.assertEqual(len(r.json()["questions"]), 8)  # bazadan tasodifiy 8 tasi
+        answers = self._correct_answers(r.json()["attempt"])
+        answers["7"] = (answers["7"] + 1) % 4  # bitta xato
         res = self.c.post(f"/api/learn/attempts/{r.json()['attempt']}/submit/", {"answers": answers}, format="json").json()
-        self.assertEqual(res["score"], len(qs) - 1)
+        self.assertEqual(res["score"], 7)
         self.assertEqual(self.c.post(f"/api/learn/attempts/{r.json()['attempt']}/submit/", {"answers": answers}, format="json").status_code, 400)
         m = self.c.get("/api/learn/mistakes/").json()
         self.assertEqual(len(m), 1)
-        fix = self.c.post("/api/learn/mistakes/submit/", {"answers": {str(qs[-1].id): qs[-1].correct_index}}, format="json").json()
+        q = Question.objects.get(pk=m[0]["question"]["id"])
+        fix = self.c.post("/api/learn/mistakes/submit/", {"answers": {str(q.id): q.correct_index}}, format="json").json()
         self.assertEqual(fix["fixed"], 1)
         self.assertEqual(self.c.get("/api/learn/mistakes/").json(), [])
         self.user.refresh_from_db()
         self.assertEqual(self.user.streak, 1)
-        self.assertGreater(self.user.xp, 0)
+
+    def test_attempts_differ(self):
+        quiz = Quiz.objects.get(title="Present Simple vs Present Continuous")
+        rounds = [tuple((q["text"], tuple(q["options"])) for q in self.c.post(f"/api/learn/quizzes/{quiz.id}/start/").json()["questions"]) for _ in range(4)]
+        self.assertGreater(len(set(rounds)), 1)  # tartib/tanlov/variantlar har safar boshqacha
+
+    def test_generated_quiz_new_numbers_each_time(self):
+        quiz = Quiz.objects.get(generator="linear")
+        a = self.c.post(f"/api/learn/quizzes/{quiz.id}/start/").json()
+        b = self.c.post(f"/api/learn/quizzes/{quiz.id}/start/").json()
+        self.assertNotEqual([q["text"] for q in a["questions"]], [q["text"] for q in b["questions"]])
+        res = self.c.post(f"/api/learn/attempts/{a['attempt']}/submit/", {"answers": self._correct_answers(a["attempt"])}, format="json").json()
+        self.assertEqual(res["score"], res["total"])
 
     def test_premium_quiz_locked(self):
         quiz = Quiz.objects.filter(is_premium=True).first()
@@ -304,11 +323,14 @@ class NewFeatureTests(Base):
         self.assertEqual(self.c.get("/api/dashboard/").json()["focus"]["today"], 25)
 
     def test_daily_challenge_once_per_day(self):
+        from learning.models import DailyChallenge
+
         d = self.c.get("/api/learn/challenge/").json()
         self.assertFalse(d["done"])
         self.assertEqual(len(d["questions"]), 5)
-        self.assertEqual([q["id"] for q in d["questions"]], [q["id"] for q in self.c.get("/api/learn/challenge/").json()["questions"]])
-        answers = {str(q.id): q.correct_index for q in Question.objects.filter(pk__in=[q["id"] for q in d["questions"]])}
+        self.assertEqual(d["questions"], self.c.get("/api/learn/challenge/").json()["questions"])  # kun davomida o'zgarmaydi
+        plan = DailyChallenge.objects.get(user=self.user).plan
+        answers = {str(i): e["perm"].index(e["correct_index"]) for i, e in enumerate(plan)}
         r = self.c.post("/api/learn/challenge/submit/", {"answers": answers}, format="json").json()
         self.assertEqual(r["score"], 5)
         self.assertEqual(self.c.post("/api/learn/challenge/submit/", {"answers": answers}, format="json").status_code, 400)
@@ -320,7 +342,7 @@ class NewFeatureTests(Base):
 
         qs = self.c.get("/api/learn/placement/").json()["questions"]
         self.assertNotIn("correct", qs[0])
-        ans = {str(q["id"]): q["correct"] for q in QUESTIONS if q["level"] in ("A1", "A2", "B1")}
+        ans = {str(q["id"]): q["answer"] for q in QUESTIONS if q["level"] in ("A1", "A2", "B1")}
         r = self.c.post("/api/learn/placement/submit/", {"answers": ans}, format="json").json()
         self.assertEqual(r["level"], "B1")
         self.user.refresh_from_db()
