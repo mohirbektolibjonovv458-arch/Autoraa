@@ -148,7 +148,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "60/min",
         "user": "240/min",
-        "auth": "10/min",
+        # IP bo'yicha: maktab Wi-Fi'da ko'p o'quvchi bitta IP'dan kiradi; raqam bo'yicha alohida cheklovlar bor
+        "auth": os.getenv("AUTH_RATE", "30/min"),
         "ai": "12/min",
     },
     "EXCEPTION_HANDLER": "core.exceptions.handler",

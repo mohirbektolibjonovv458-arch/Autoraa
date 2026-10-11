@@ -137,7 +137,9 @@ def _req_payload(req, linked):
 @permission_classes([AllowAny])
 @authentication_classes([])
 def phone_config(request):
-    return Response({"configured": tg.configured(), "bot_username": tg.bot_username() if tg.configured() else ""})
+    name = tg.bot_username() if tg.configured() else ""
+    # configured — token bor; ok — token Telegram tomonidan qabul qilindi (getMe ishladi)
+    return Response({"configured": tg.configured(), "ok": bool(name), "bot_username": name})
 
 
 @api_view(["POST"])
@@ -150,15 +152,26 @@ def phone_start(request):
     phone = tg.normalize_phone(request.data.get("phone"))
     if not phone:
         return Response({"detail": "Telefon raqamni to'g'ri kiriting: +998 XX XXX XX XX"}, status=400)
+    mode = "register" if request.data.get("mode") == "register" else "login"
+    first_name = str(request.data.get("first_name", "")).strip()[:60]
     u = User.objects.filter(phone=phone).first()
     if u and not u.is_active:
         return Response({"detail": "Bu akkaunt bloklangan. Administratorga murojaat qiling."}, status=403)
+    if mode == "login" and not u:
+        return Response({"detail": "Bu raqam hali ro'yxatdan o'tmagan. «Ro'yxatdan o'tish» bo'limini tanlang.", "code": "not_registered"}, status=404)
+    if mode == "register" and u:
+        return Response({"detail": "Bu raqam allaqachon ro'yxatdan o'tgan. «Kirish» bo'limidan kiring.", "code": "already_registered"}, status=409)
+    if mode == "register" and not first_name:
+        return Response({"detail": "Ismingizni kiriting."}, status=400)
     # so'nggi 10 daqiqadagi faol so'rov qayta ishlatiladi (bot havolasi o'zgarmasin)
-    req = LoginRequest.objects.filter(phone=phone, used=False, created__gte=_tz.now() - _td(minutes=10)).order_by("-created").first()
+    req = LoginRequest.objects.filter(phone=phone, mode=mode, used=False, created__gte=_tz.now() - _td(minutes=10)).order_by("-created").first()
     if LoginRequest.objects.filter(phone=phone, created__gte=_tz.now() - _td(hours=1)).count() >= 10:
         return Response({"detail": "Juda ko'p urinish. Bir soatdan so'ng qayta urinib ko'ring."}, status=429)
     if not req:
-        req = LoginRequest.objects.create(phone=phone, token=_secrets.token_urlsafe(12))
+        req = LoginRequest.objects.create(phone=phone, token=_secrets.token_urlsafe(12), mode=mode, first_name=first_name)
+    elif first_name and req.first_name != first_name:
+        req.first_name = first_name
+        req.save(update_fields=["first_name"])
     link = TelegramLink.objects.filter(phone=phone).first()
     if link and (not req.code_sent_at or (_tz.now() - req.code_sent_at).total_seconds() >= RESEND_SECONDS):
         if not tg.send_code(req, link.chat_id):
@@ -220,8 +233,10 @@ def phone_verify(request):
         link = TelegramLink.objects.filter(phone=req.phone).first()
         user = User.objects.filter(phone=req.phone).first()
         is_new = user is None
+        if is_new and req.mode != "register":
+            return Response({"detail": "Bu raqam ro'yxatdan o'tmagan. «Ro'yxatdan o'tish» bo'limini tanlang.", "code": "not_registered"}, status=404)
         if is_new:
-            user = User.objects.create_user(phone=req.phone, first_name=(link.first_name if link else "")[:60])
+            user = User.objects.create_user(phone=req.phone, first_name=(req.first_name or (link.first_name if link else ""))[:60])
         if not user.is_active:
             return Response({"detail": "Bu akkaunt bloklangan."}, status=403)
         if link and user.telegram_chat_id != link.chat_id:

@@ -104,6 +104,8 @@ class LoginRequest(models.Model):
     LIFETIME = 300  # kod 5 daqiqa amal qiladi
     token = models.CharField(max_length=32, unique=True)
     phone = models.CharField(max_length=16, db_index=True)
+    mode = models.CharField(max_length=10, default="login")  # login / register
+    first_name = models.CharField(max_length=60, blank=True)  # ro'yxatdan o'tishda kiritilgan ism
     code_hash = models.CharField(max_length=64, blank=True)
     code_sent_at = models.DateTimeField(null=True, blank=True)
     attempts = models.PositiveSmallIntegerField(default=0)

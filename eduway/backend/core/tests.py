@@ -227,6 +227,13 @@ class AdminTests(Base):
 
 class AITests(Base):
     @override_settings(ANTHROPIC_API_KEY="")
+    def test_token_cleanup(self):
+        from accounts import telegram
+        with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ' "123:abc" '}):
+            self.assertEqual(telegram.token(), "123:abc")
+        with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "TELEGRAM_BOT_TOKEN=123:abc"}):
+            self.assertEqual(telegram.token(), "123:abc")
+
     def test_not_configured(self):
         self.assertFalse(self.c.get("/api/ai/status/").json()["configured"])
         r = self.c.post("/api/ai/chat/", {"mode": "tutor", "message": "Salom"}, format="json")
@@ -422,7 +429,9 @@ class PhoneLoginTests(TestCase):
                            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=webhook_secret())
 
     def test_full_flow_new_user_then_login(self):
-        r = self.c.post("/api/auth/phone/start/", {"phone": "90 123 45 67"}, format="json").json()
+        self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "90 123 45 67"}, format="json").json()["code"], "not_registered")
+        self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "90 123 45 67", "mode": "register"}, format="json").status_code, 400)
+        r = self.c.post("/api/auth/phone/start/", {"phone": "90 123 45 67", "mode": "register", "first_name": "Malika"}, format="json").json()
         self.assertEqual(r["status"], "need_bot")
         self.assertIn("t.me/eduway_test_bot?start=", r["bot_url"])
         tok = r["token"]
@@ -449,12 +458,14 @@ class PhoneLoginTests(TestCase):
         v2 = self.c.post("/api/auth/phone/verify/", {"token": r2["token"], "code": self.last_code()}, format="json").json()
         self.assertFalse(v2["is_new"])
         self.assertEqual(User.objects.filter(phone="+998901234567").count(), 1)
+        again = self.c.post("/api/auth/phone/start/", {"phone": "901234567", "mode": "register", "first_name": "X"}, format="json")
+        self.assertEqual(again.json()["code"], "already_registered")
 
     def test_attempt_limit_and_bad_phone(self):
         self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "12345"}, format="json").status_code, 400)
         from accounts.models import TelegramLink
         TelegramLink.objects.create(phone="+998901112233", chat_id=9)
-        r = self.c.post("/api/auth/phone/start/", {"phone": "901112233"}, format="json").json()
+        r = self.c.post("/api/auth/phone/start/", {"phone": "901112233", "mode": "register", "first_name": "Ali"}, format="json").json()
         for _ in range(5):
             self.c.post("/api/auth/phone/verify/", {"token": r["token"], "code": "abcd"}, format="json")
         code = self.last_code()
@@ -463,6 +474,13 @@ class PhoneLoginTests(TestCase):
 
     def test_webhook_requires_secret(self):
         self.assertEqual(self.c.post("/api/auth/telegram/webhook/", {"message": {}}, format="json").status_code, 403)
+
+    def test_token_cleanup(self):
+        from accounts import telegram
+        with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ' "123:abc" '}):
+            self.assertEqual(telegram.token(), "123:abc")
+        with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "TELEGRAM_BOT_TOKEN=123:abc"}):
+            self.assertEqual(telegram.token(), "123:abc")
 
     def test_not_configured(self):
         with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}):

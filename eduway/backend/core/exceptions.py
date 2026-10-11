@@ -6,7 +6,13 @@ log = logging.getLogger("eduway")
 
 
 def handler(exc, context):
+    from rest_framework.exceptions import Throttled
+
     response = exception_handler(exc, context)
+    if isinstance(exc, Throttled) and response is not None:
+        wait = int(exc.wait or 60)
+        response.data = {"detail": f"Juda ko'p urinish. {wait} soniyadan so'ng qayta urinib ko'ring.", "code": "throttled"}
+        return response
     if response is None:
         # Kutilmagan xato: foydalanuvchiga ichki tafsilotlarni ko'rsatmaymiz, lekin admin uchun qayd qilamiz
         log.exception("Unhandled API error", exc_info=exc)

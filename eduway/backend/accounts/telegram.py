@@ -34,7 +34,11 @@ REMOVE_KB = {"remove_keyboard": True}
 
 
 def token():
-    return os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    # Railway'da qiymat ba'zan qo'shtirnoq yoki «TELEGRAM_BOT_TOKEN=» bilan qo'yilib qoladi — tozalaymiz
+    t = os.getenv("TELEGRAM_BOT_TOKEN", "").strip().strip("'\"").strip()
+    if t.startswith("TELEGRAM_BOT_TOKEN="):
+        t = t.split("=", 1)[1].strip().strip("'\"")
+    return t
 
 
 def configured():

@@ -74,7 +74,7 @@ export default function App() {
       <Route path="/" element={<Entry />} />
       <Route path="/welcome" element={<PhoneAuth />} />
       <Route path="/login" element={<ToWelcome />} />
-      <Route path="/register" element={<ToWelcome />} />
+      <Route path="/register" element={<Navigate to="/welcome?mode=register" replace />} />
       <Route path="/admin-login" element={<Login />} />
       <Route path="/about" element={<Suspense fallback={<Splash />}><About /></Suspense>} />
       <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />

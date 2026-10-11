@@ -65,6 +65,7 @@ function Overview() {
         <section className="card p-5">
           <h2 className="flex items-center gap-2 font-bold"><Activity className="h-5 w-5 text-brand" /> Xizmat holati</h2>
           <ul className="mt-3 space-y-2 text-sm">
+            <li className="flex justify-between"><span>Telegram bot (kirish kodlari)</span>{d.health.telegram === "ok" ? <Badge tone="ok">Ulangan</Badge> : d.health.telegram === "invalid" ? <Badge tone="bad">Token noto'g'ri</Badge> : <Badge tone="warn">TELEGRAM_BOT_TOKEN yo'q</Badge>}</li>
             <li className="flex justify-between"><span>Ma'lumotlar bazasi</span>{d.health.db ? <Badge tone="ok">Ishlayapti</Badge> : <Badge tone="bad">Xato</Badge>}</li>
             <li className="flex justify-between"><span>Server xatolari (24 soat)</span><Badge tone={d.health.server_errors_24h ? "bad" : "ok"}>{d.health.server_errors_24h}</Badge></li>
             <li className="flex justify-between"><span>DEBUG rejimi</span><Badge tone={d.health.debug ? "warn" : "ok"}>{d.health.debug ? "Yoqilgan" : "O'chiq"}</Badge></li>

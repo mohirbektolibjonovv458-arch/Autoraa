@@ -7,7 +7,8 @@ import { cx, Spinner } from "../../components/ui";
 import { ApiError, get, post, tokens } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 
-type Flow = { phone: string; token: string; status: "need_bot" | "code_sent"; bot_url: string | null; resend_in: number; ts: number };
+type Mode = "login" | "register";
+type Flow = { mode?: Mode; phone: string; token: string; status: "need_bot" | "code_sent"; bot_url: string | null; resend_in: number; ts: number };
 const KEY = "eduway-login-flow";
 
 // Botga o'tib qaytguncha holat telefonda saqlanadi: brauzer sahifani qayta yuklasa ham kod oynasi o'zi ochiladi
@@ -71,9 +72,12 @@ export default function PhoneAuth() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [resendIn, setResendIn] = useState(flow?.resend_in || 0);
-  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<Mode>(() => (loadFlow()?.mode || (sp.get("mode") === "register" ? "register" : "login")));
+  const [name, setName] = useState("");
+  const [errCode, setErrCode] = useState("");
+  const [bot, setBot] = useState<{ configured: boolean; ok: boolean } | null>(null);
 
-  useEffect(() => { get("/auth/phone/config/").then((c) => setConfigured(c.configured)).catch(() => setConfigured(null)); }, []);
+  useEffect(() => { get("/auth/phone/config/").then(setBot).catch(() => setBot(null)); }, []);
   const update = useCallback((f: Flow | null) => { setFlow(f); saveFlow(f); if (f) setResendIn(f.resend_in); }, []);
 
   // botdan qaytganda (yoki har 2,5 soniyada) holatni tekshiramiz — kod yuborilganini darhol ko'rsatish uchun
@@ -115,14 +119,16 @@ export default function PhoneAuth() {
 
   const start = async (e?: FormEvent) => {
     e?.preventDefault();
+    if (mode === "register" && !name.trim()) { setErr("Ismingizni kiriting"); return; }
     if (digits.length !== 9) { setErr("Raqamni to'liq kiriting: 9 ta raqam"); return; }
     setBusy(true);
     setErr("");
+    setErrCode("");
     try {
-      const r = await post("/auth/phone/start/", { phone: "998" + digits });
-      update({ ...r, ts: Date.now() });
+      const r = await post("/auth/phone/start/", { phone: "998" + digits, mode, first_name: name.trim() });
+      update({ ...r, mode, ts: Date.now() });
       setCode("");
-    } catch (e) { setErr((e as ApiError).message); } finally { setBusy(false); }
+    } catch (e) { setErr((e as ApiError).message); setErrCode((e as ApiError).code || ""); } finally { setBusy(false); }
   };
   const resend = async () => {
     if (!flow) return;
@@ -160,19 +166,35 @@ export default function PhoneAuth() {
         <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.06] p-5 shadow-2xl backdrop-blur-xl animate-fade-up [animation-delay:.35s]">
           {!flow ? (
             <form onSubmit={start}>
-              <p className="text-lg font-bold">Kirish yoki ro'yxatdan o'tish</p>
-              <p className="mt-1 text-sm text-white/60">Telefon raqamingizni kiriting — tasdiqlash kodi Telegram orqali keladi.</p>
-              <label className="mt-5 flex h-14 items-center gap-2 rounded-2xl border-2 border-white/20 bg-white/10 px-4 transition focus-within:border-white">
+              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white/10 p-1">
+                {(["login", "register"] as Mode[]).map((m) => (
+                  <button key={m} type="button" onClick={() => { setMode(m); setErr(""); setErrCode(""); }}
+                    className={cx("h-11 rounded-xl text-[15px] font-bold transition", mode === m ? "bg-white text-[#1B2560] shadow" : "text-white/70 hover:text-white")}>
+                    {m === "login" ? "Kirish" : "Ro'yxatdan o'tish"}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-4 text-sm text-white/60">{mode === "login" ? "Ro'yxatdan o'tgan raqamingizni kiriting — kod Telegram orqali keladi." : "Ismingiz va raqamingizni kiriting — tasdiqlash kodi Telegram orqali keladi."}</p>
+              {mode === "register" && (
+                <input value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} maxLength={60} autoComplete="given-name" placeholder="Ismingiz" aria-label="Ism"
+                  className="mt-4 h-14 w-full rounded-2xl border-2 border-white/20 bg-white/10 px-4 text-[17px] font-semibold text-white outline-none transition placeholder:text-white/30 focus:border-white" />
+              )}
+              <label className="mt-3 flex h-14 items-center gap-2 rounded-2xl border-2 border-white/20 bg-white/10 px-4 transition focus-within:border-white">
                 <span className="text-[17px] font-semibold text-white/80">+998</span>
                 <input value={formatPhone(digits)} onChange={(e) => { setDigits(e.target.value.replace(/\D/g, "").slice(0, 9)); setErr(""); }}
                   inputMode="tel" autoComplete="tel-national" placeholder="90 123 45 67" aria-label="Telefon raqam"
                   className="h-full min-w-0 flex-1 bg-transparent text-[17px] font-semibold tracking-wide text-white outline-none placeholder:text-white/30" />
               </label>
-              <p className="mt-2 min-h-[20px] text-sm text-rose-300">{err}</p>
-              <button disabled={busy || digits.length !== 9 || configured === false} className="btn mt-1 h-14 w-full rounded-2xl bg-white text-[16px] text-[#1B2560] hover:bg-white/90 disabled:opacity-50">
-                {busy ? <Spinner /> : <>Davom etish <ArrowRight className="h-5 w-5" /></>}
+              <p className="mt-2 min-h-[20px] text-sm text-rose-300">
+                {err}
+                {errCode === "not_registered" && <button type="button" onClick={() => { setMode("register"); setErr(""); setErrCode(""); }} className="ml-1 font-bold text-white underline">Ro'yxatdan o'tish →</button>}
+                {errCode === "already_registered" && <button type="button" onClick={() => { setMode("login"); setErr(""); setErrCode(""); }} className="ml-1 font-bold text-white underline">Kirish →</button>}
+              </p>
+              <button disabled={busy || digits.length !== 9 || bot?.configured === false} className="btn mt-1 h-14 w-full rounded-2xl bg-white text-[16px] text-[#1B2560] hover:bg-white/90 disabled:opacity-50">
+                {busy ? <Spinner /> : <>{mode === "login" ? "Kodni olish" : "Ro'yxatdan o'tish"} <ArrowRight className="h-5 w-5" /></>}
               </button>
-              {configured === false && <p className="mt-3 text-center text-xs text-amber-300">Telegram bot hali ulanmagan — administrator sozlashi kerak.</p>}
+              {bot && !bot.configured && <p className="mt-3 rounded-xl bg-amber-400/15 p-3 text-center text-xs text-amber-200">Telegram bot serverga ulanmagan: Railway → Variables'da <b>TELEGRAM_BOT_TOKEN</b> yo'q yoki qo'shilgandan keyin Deploy qilinmagan.</p>}
+              {bot && bot.configured && !bot.ok && <p className="mt-3 rounded-xl bg-amber-400/15 p-3 text-center text-xs text-amber-200">Telegram bot tokeni qabul qilinmadi: tokenni @BotFather'dan qayta nusxalab, Railway'ga qo'ying.</p>}
             </form>
           ) : (
             <div>

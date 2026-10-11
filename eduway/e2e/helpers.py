@@ -25,12 +25,15 @@ def last_code(after=0, timeout=10):
     raise AssertionError("Bot kod yubormadi")
 
 
-def phone_login(page, base, phone9, name="Test", shot=None):
+def phone_login(page, base, phone9, name="Test", shot=None, register=True):
     """Kirish ekrani orqali to'liq oqim: raqam -> bot (start + kontakt) -> kod. Qaytaradi: True agar yangi akkaunt."""
     before = len(_tg("/__messages"))
     page.goto(base + "/welcome")
+    if register:
+        page.get_by_role("button", name="Ro'yxatdan o'tish").first.click()
+        page.get_by_label("Ism").fill(name)
     page.get_by_label("Telefon raqam").fill(phone9)
-    page.get_by_role("button", name="Davom etish").click()
+    page.get_by_role("button", name="Ro'yxatdan o'tish" if register else "Kodni olish").last.click()
     page.wait_for_selector("text=/Kodni Telegram'dan oling|Kod Telegram'ga yuborildi/")
     if page.get_by_text("Kodni Telegram'dan oling").count():
         href = page.get_by_role("link", name="Telegram botni ochish").get_attribute("href")

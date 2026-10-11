@@ -144,6 +144,14 @@ class UserAdmin(AdminViewSet):
         serializer.save()
 
 
+def _tg_status():
+    from accounts import telegram
+
+    if not telegram.configured():
+        return "missing"
+    return "ok" if telegram.bot_username() else "invalid"
+
+
 @api_view(["GET"])
 @permission_classes([IsAdmin])
 def overview(request):
@@ -173,7 +181,7 @@ def overview(request):
         "billing": {"pending": PremiumRequest.objects.filter(status="pending").count(),
                     "payment_configured": bool(settings.PREMIUM_PAYMENT_INSTRUCTIONS), "price_uzs": settings.PREMIUM_PRICE_UZS},
         "moderation": {"flagged_ai": Message.objects.filter(feedback="bad", reviewed=False).count()},
-        "health": {"db": db_ok, "debug": settings.DEBUG, "server_errors_24h": ErrorLog.objects.filter(source="server", created__gte=now - timedelta(hours=24)).count()},
+        "health": {"telegram": _tg_status(), "db": db_ok, "debug": settings.DEBUG, "server_errors_24h": ErrorLog.objects.filter(source="server", created__gte=now - timedelta(hours=24)).count()},
     })
 
 
