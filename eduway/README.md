@@ -17,7 +17,9 @@ O‘quvchilar uchun ta’lim platformasi. EduWay (kasb, universitet, grantlar) v
 
 | Modul | Holat | Izoh |
 |---|---|---|
-| Ro‘yxatdan o‘tish, kirish, chiqish, parolni o‘zgartirish, akkauntni o‘chirish | ✅ | JWT (access + refresh, rotatsiya, blacklist). Kirish so‘rovlari cheklangan (10/daqiqa) |
+| Kirish / ro‘yxatdan o‘tish: telefon raqam + Telegram bot kodi | ⚙️ | `TELEGRAM_BOT_TOKEN` kerak. Raqam → bot (Start + «Raqamni ulashish») → 4 xonali kod → kirish; yangi raqam bo‘lsa akkaunt avtomatik ochiladi. Botga o‘tib qaytganda holat saqlanadi. Kod 5 daqiqa amal qiladi, 5 ta urinish, xeshlangan holda saqlanadi |
+| Administrator kirishi (`/admin-login`) | ✅ | Email + parol (`python manage.py create_admin`) |
+| Chiqish, akkauntni o‘chirish | ✅ | JWT (access + refresh, rotatsiya, blacklist). Kirish so‘rovlari cheklangan (10/daqiqa) |
 | Animatsiyali boshlang‘ich ekran, tanishtiruv, onboarding | ✅ | |
 | Shaxsiy profil (bosqich, sinf, qiziqishlar, fanlar, maqsadlar, til darajasi, IELTS) | ✅ | |
 | Bosh sahifa | ✅ | Bugungi reja, streak, haftalik faollik, maqsadlar, ingliz tili, muddatlar, tavsiyalar. Hammasi real ma’lumotdan |
@@ -104,6 +106,7 @@ Kalit brauzerga yuborilmaydi va repozitoriyga yozilmaydi (`.env` fayli `.gitigno
    - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Postgres servisiga havola)
    - `DEBUG` = `0`
    - `ANTHROPIC_API_KEY` = kalitingiz (AI uchun)
+   - `TELEGRAM_BOT_TOKEN` = @BotFather bergan bot tokeni (telefon orqali kirish uchun). Railway'da bot **webhook** rejimida ishlaydi — domen avtomatik aniqlanadi
    - ixtiyoriy: `AI_MODEL`, `AI_DAILY_LIMIT_FREE`, `AI_DAILY_LIMIT_PREMIUM`, `PREMIUM_PRICE_UZS`, `PREMIUM_PAYMENT_INSTRUCTIONS`
    - `SECRET_KEY` = kamida 50 belgili tasodifiy satr (berilmasa, har deployda yangisi yaratiladi va foydalanuvchilar qayta kirishi kerak bo'ladi)
 5. **Settings → Networking → Generate Domain.** Domen `ALLOWED_HOSTS`ga avtomatik qo'shiladi (`RAILWAY_PUBLIC_DOMAIN`), HTTPS sozlamalari ham avtomatik yoqiladi.

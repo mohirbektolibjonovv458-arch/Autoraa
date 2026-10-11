@@ -77,7 +77,7 @@ export function Login() {
     }
   };
   return (
-    <Shell title="Xush kelibsiz!" subtitle="Akkauntingizga kiring va o'qishni davom ettiring." footer={<>Akkauntingiz yo'qmi? <Link to="/register" className="font-semibold text-brand">Ro'yxatdan o'ting</Link></>}>
+    <Shell title="Administrator kirishi" subtitle="Email va parol bilan. O'quvchilar telefon raqam orqali kiradi." footer={<>O'quvchimisiz? <Link to="/welcome" className="font-semibold text-brand">Telefon raqam bilan kirish</Link></>}>
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email"><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
         <Field label="Parol"><PasswordInput value={password} onChange={setPassword} autoComplete="current-password" /></Field>

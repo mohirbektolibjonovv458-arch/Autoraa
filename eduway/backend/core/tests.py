@@ -9,6 +9,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import User
+from accounts.views import tokens_for
 from catalog.models import Grant, University
 from learning.models import Question, Quiz
 
@@ -26,10 +27,8 @@ class Base(TestCase):
     def setUp(self):
         cache.clear()  # throttling hisoblagichlari testlar orasida tozalanadi
         self.c = APIClient()
-        r = self.c.post("/api/auth/register/", {"email": "Ali@Example.com", "password": "Kuchli-parol-2026", "first_name": "Ali"}, format="json")
-        self.assertEqual(r.status_code, 201, r.content)
-        self.user = User.objects.get(email="ali@example.com")
-        self.c.credentials(HTTP_AUTHORIZATION="Bearer " + r.json()["access"])
+        self.user = User.objects.create_user("ali@example.com", "Kuchli-parol-2026", first_name="Ali")
+        self.c.credentials(HTTP_AUTHORIZATION="Bearer " + tokens_for(self.user)["access"])
 
     def make_premium(self, user=None):
         u = user or self.user
@@ -53,11 +52,6 @@ class AuthTests(Base):
         self.user.refresh_from_db()
         self.assertIsNone(self.user.premium_until)
         self.assertNotEqual(self.user.xp, 9999)
-
-    def test_duplicate_and_weak_password(self):
-        c = APIClient()
-        self.assertEqual(c.post("/api/auth/register/", {"email": "ali@example.com", "password": "Kuchli-parol-2026", "first_name": "A"}, format="json").status_code, 400)
-        self.assertEqual(c.post("/api/auth/register/", {"email": "b@example.com", "password": "12345678", "first_name": "B"}, format="json").status_code, 400)
 
     def test_requires_auth(self):
         self.assertEqual(APIClient().get("/api/dashboard/").status_code, 401)
@@ -102,7 +96,7 @@ class CatalogTests(Base):
         item = saved["checklist"][0]["id"]
         self.assertTrue(self.c.patch(f"/api/grants/checklist/{item}/", {"done": True}, format="json").json()["done"])
         other = APIClient()
-        tok = other.post("/api/auth/register/", {"email": "x@example.com", "password": "Kuchli-parol-2026", "first_name": "X"}, format="json").json()["access"]
+        tok = tokens_for(User.objects.create_user(phone="+998901112233"))["access"]
         other.credentials(HTTP_AUTHORIZATION="Bearer " + tok)
         self.assertEqual(other.patch(f"/api/grants/checklist/{item}/", {"done": False}, format="json").status_code, 404)
         detail = self.c.get(f"/api/grants/{g.id}/").json()
@@ -393,3 +387,83 @@ class PushTests(Base):
             self.user.push_reminders = False
             self.user.save()
             self.assertEqual(evening_reminders(), 0)
+
+
+
+@override_settings(SECRET_KEY="t" * 50)
+class PhoneLoginTests(TestCase):
+    """Telefon + Telegram kod oqimi. Telegram API soxtalashtiriladi, bot xabarlari webhook orqali yuboriladi."""
+
+    def setUp(self):
+        cache.clear()
+        self.sent = []
+        patcher = mock.patch("accounts.telegram.call", side_effect=self.fake_call)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env = mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "123:abc"})
+        env.start()
+        self.addCleanup(env.stop)
+        from accounts import telegram
+        telegram._username["value"] = "eduway_test_bot"
+        self.c = APIClient()
+
+    def fake_call(self, method, data=None, timeout=15):
+        if method == "sendMessage":
+            self.sent.append(data)
+        return {"ok": True, "result": {}}
+
+    def last_code(self):
+        import re as _re
+        return _re.search(r"<code>(\d{4})</code>", self.sent[-1]["text"]).group(1)
+
+    def webhook(self, message):
+        from accounts.telegram import webhook_secret
+        return self.c.post("/api/auth/telegram/webhook/", {"update_id": 1, "message": message}, format="json",
+                           HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=webhook_secret())
+
+    def test_full_flow_new_user_then_login(self):
+        r = self.c.post("/api/auth/phone/start/", {"phone": "90 123 45 67"}, format="json").json()
+        self.assertEqual(r["status"], "need_bot")
+        self.assertIn("t.me/eduway_test_bot?start=", r["bot_url"])
+        tok = r["token"]
+        chat = {"id": 555, "type": "private"}
+        self.webhook({"chat": chat, "from": {"id": 555, "first_name": "Malika"}, "text": f"/start {tok}"})
+        self.assertIn("Raqamni ulashish", str(self.sent[-1]))
+        # boshqa odamning kontakti qabul qilinmaydi
+        self.webhook({"chat": chat, "from": {"id": 555}, "contact": {"user_id": 777, "phone_number": "+998901234567"}})
+        self.assertEqual(self.c.get(f"/api/auth/phone/status/?token={tok}").json()["status"], "need_bot")
+        self.webhook({"chat": chat, "from": {"id": 555, "first_name": "Malika"}, "contact": {"user_id": 555, "phone_number": "998901234567"}})
+        self.assertEqual(self.c.get(f"/api/auth/phone/status/?token={tok}").json()["status"], "code_sent")
+        code = self.last_code()
+        wrong = "0000" if code != "0000" else "1111"
+        self.assertEqual(self.c.post("/api/auth/phone/verify/", {"token": tok, "code": wrong}, format="json").status_code, 400)
+        v = self.c.post("/api/auth/phone/verify/", {"token": tok, "code": code}, format="json").json()
+        self.assertTrue(v["is_new"])
+        self.assertEqual(v["user"]["phone"], "+998901234567")
+        self.assertEqual(v["user"]["first_name"], "Malika")
+        # kod qayta ishlatilmaydi
+        self.assertEqual(self.c.post("/api/auth/phone/verify/", {"token": tok, "code": code}, format="json").status_code, 400)
+        # keyingi kirish: raqam ulangan — kod darhol keladi, bot ochish shart emas
+        r2 = self.c.post("/api/auth/phone/start/", {"phone": "+998 90 123 45 67"}, format="json").json()
+        self.assertEqual(r2["status"], "code_sent")
+        v2 = self.c.post("/api/auth/phone/verify/", {"token": r2["token"], "code": self.last_code()}, format="json").json()
+        self.assertFalse(v2["is_new"])
+        self.assertEqual(User.objects.filter(phone="+998901234567").count(), 1)
+
+    def test_attempt_limit_and_bad_phone(self):
+        self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "12345"}, format="json").status_code, 400)
+        from accounts.models import TelegramLink
+        TelegramLink.objects.create(phone="+998901112233", chat_id=9)
+        r = self.c.post("/api/auth/phone/start/", {"phone": "901112233"}, format="json").json()
+        for _ in range(5):
+            self.c.post("/api/auth/phone/verify/", {"token": r["token"], "code": "abcd"}, format="json")
+        code = self.last_code()
+        res = self.c.post("/api/auth/phone/verify/", {"token": r["token"], "code": code}, format="json")
+        self.assertEqual(res.json()["code"], "too_many")
+
+    def test_webhook_requires_secret(self):
+        self.assertEqual(self.c.post("/api/auth/telegram/webhook/", {"message": {}}, format="json").status_code, 403)
+
+    def test_not_configured(self):
+        with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}):
+            self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "901234567"}, format="json").status_code, 503)

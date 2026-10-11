@@ -9,3 +9,7 @@ class CoreConfig(AppConfig):
         from . import scheduler, signals  # noqa: F401
 
         scheduler.start()
+
+        from accounts import telegram
+
+        telegram.start()

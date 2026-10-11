@@ -39,7 +39,7 @@ export default function Settings() {
     catch (e: any) { toast(e.message, "bad"); }
   };
   const remove = async () => {
-    try { await del("/auth/me/", { password: delPw }); tokens.clear(); await logout(); } catch (e: any) { toast(e.message, "bad"); }
+    try { await del("/auth/me/", user?.email ? { password: delPw } : { confirm: delPw }); tokens.clear(); await logout(); } catch (e: any) { toast(e.message, "bad"); }
   };
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
 
@@ -97,12 +97,12 @@ export default function Settings() {
         <button className="btn-primary w-full" disabled={busy}>{busy ? <Spinner /> : "Saqlash"}</button>
       </form>
 
-      <section className="card mt-4 space-y-3 p-5">
+      {user?.email && <section className="card mt-4 space-y-3 p-5">
         <h2 className="font-bold">Parolni o'zgartirish</h2>
         <Field label="Joriy parol"><input type="password" className="input" value={pw.old_password} autoComplete="current-password" onChange={(e) => setPw({ ...pw, old_password: e.target.value })} /></Field>
         <Field label="Yangi parol"><input type="password" className="input" value={pw.new_password} autoComplete="new-password" minLength={8} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} /></Field>
         <button className="btn-outline w-full" disabled={!pw.old_password || pw.new_password.length < 8} onClick={changePw}>Yangilash</button>
-      </section>
+      </section>}
 
       <section className="card mt-4 p-5">
         <h2 className="font-bold">Ma'lumotlar</h2>
@@ -110,8 +110,8 @@ export default function Settings() {
         <button className="btn-outline mt-3 w-full text-bad" onClick={() => setDelOpen(true)}><Trash2 className="h-4 w-4" /> Akkauntni o'chirish</button>
       </section>
       <Modal open={delOpen} onClose={() => setDelOpen(false)} title="Akkauntni o'chirish">
-        <p className="text-sm text-sub">Bu amalni qaytarib bo'lmaydi. Tasdiqlash uchun parolingizni kiriting.</p>
-        <input type="password" className="input mt-3" value={delPw} onChange={(e) => setDelPw(e.target.value)} autoComplete="current-password" />
+        <p className="text-sm text-sub">Bu amalni qaytarib bo'lmaydi. {user?.email ? "Tasdiqlash uchun parolingizni kiriting." : "Tasdiqlash uchun O'CHIRISH so'zini yozing."}</p>
+        <input type={user?.email ? "password" : "text"} className="input mt-3" value={delPw} onChange={(e) => setDelPw(e.target.value)} placeholder={user?.email ? "" : "O'CHIRISH"} autoComplete="off" />
         <button className="btn mt-4 w-full bg-bad text-white" disabled={!delPw} onClick={remove}>O'chirish</button>
       </Modal>
     </>

@@ -13,7 +13,7 @@ with sync_playwright() as pw:
     page = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2).new_page()
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.set_default_timeout(20000)
-    page.goto(BASE + "/login?next=/ai")
+    page.goto(BASE + "/admin-login?next=/ai")
     page.get_by_label("Email").fill("admin@eduway.uz")
     page.locator("input[type=password]").fill(os.getenv("ADMIN_PASSWORD", "Admin-parol-2026"))
     page.get_by_role("button", name="Kirish").click()

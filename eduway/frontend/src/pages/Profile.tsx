@@ -29,7 +29,7 @@ export default function Profile() {
           <div className="grid h-16 w-16 place-items-center rounded-3xl gradient-hero text-2xl font-extrabold text-white">{user.first_name?.[0]?.toUpperCase()}</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xl font-extrabold">{user.full_name}</p>
-            <p className="truncate text-sm text-sub">{user.email}</p>
+            <p className="truncate text-sm text-sub">{user.phone || user.email}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {user.is_premium ? <Badge tone="warn"><Crown className="h-3 w-3" /> Premium</Badge> : <Badge tone="muted">Bepul tarif</Badge>}
               {user.education_stage && <Badge tone="muted"><GraduationCap className="h-3 w-3" /> {STAGE[user.education_stage]}{user.grade ? `, ${user.grade}-sinf` : ""}</Badge>}

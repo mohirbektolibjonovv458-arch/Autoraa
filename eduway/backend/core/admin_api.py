@@ -111,15 +111,15 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "education_stage", "grade", "is_active", "is_staff", "premium_until",
+        fields = ["id", "email", "phone", "first_name", "last_name", "education_stage", "grade", "is_active", "is_staff", "premium_until",
                   "plan", "xp", "streak", "date_joined", "last_login", "onboarded"]
-        read_only_fields = ["id", "email", "xp", "streak", "date_joined", "last_login", "onboarded", "education_stage", "grade"]
+        read_only_fields = ["id", "email", "phone", "xp", "streak", "date_joined", "last_login", "onboarded", "education_stage", "grade"]
 
 
 class UserAdmin(AdminViewSet):
     queryset = User.objects.all()
     serializer_class = UserAdminSerializer
-    search_fields = ("email", "first_name", "last_name")
+    search_fields = ("email", "phone", "first_name", "last_name")
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_queryset(self):
@@ -181,7 +181,7 @@ def overview(request):
 @permission_classes([IsAdmin])
 def errors(request):
     qs = ErrorLog.objects.select_related("user")[:100]
-    return Response([{"id": e.id, "source": e.source, "code": e.code, "message": e.message[:500], "user": e.user.email if e.user else None, "created": e.created} for e in qs])
+    return Response([{"id": e.id, "source": e.source, "code": e.code, "message": e.message[:500], "user": str(e.user) if e.user else None, "created": e.created} for e in qs])
 
 
 @api_view(["GET"])
@@ -190,7 +190,7 @@ def premium_requests(request):
     qs = PremiumRequest.objects.select_related("user")
     if st := request.query_params.get("status"):
         qs = qs.filter(status=st)
-    return Response([{"id": r.id, "user": {"id": r.user.id, "email": r.user.email, "name": r.user.full_name}, "months": r.months, "amount": r.amount,
+    return Response([{"id": r.id, "user": {"id": r.user.id, "email": r.user.email or r.user.phone, "name": r.user.full_name}, "months": r.months, "amount": r.amount,
                       "payment_reference": r.payment_reference, "note": r.note, "status": r.status, "admin_note": r.admin_note,
                       "created": r.created, "reviewed_at": r.reviewed_at} for r in qs[:200]])
 
@@ -250,7 +250,7 @@ def flagged_messages(request):
     out = []
     for m in qs.order_by("-created")[:100]:
         q = Message.objects.filter(conversation=m.conversation, role="user", created__lte=m.created).order_by("-created", "-id").first()
-        out.append({"id": m.id, "mode": m.conversation.mode, "user": m.conversation.user.email, "question": q.content if q else "",
+        out.append({"id": m.id, "mode": m.conversation.mode, "user": str(m.conversation.user), "question": q.content if q else "",
                     "answer": m.content, "note": m.feedback_note, "reviewed": m.reviewed, "created": m.created})
     return Response(out)
 

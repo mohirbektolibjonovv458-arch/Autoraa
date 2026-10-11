@@ -37,6 +37,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState({
+    first_name: user?.first_name || "", last_name: user?.last_name || "",
     education_stage: user?.education_stage || "", grade: user?.grade ?? null as number | null, region: user?.region || "",
     interests: user?.interests || [], favorite_subjects: user?.favorite_subjects || [], future_goals: user?.future_goals || "",
     target_countries: user?.target_countries || [], english_level: user?.english_level || "", daily_minutes: user?.daily_minutes || 30,
@@ -44,7 +45,7 @@ export default function Onboarding() {
   useEffect(() => { get<Options>("/auth/options/").then(setOpts).catch(() => {}); }, []);
 
   const steps = ["Ta'lim", "Qiziqishlar", "Fanlar", "Maqsadlar"];
-  const canNext = [!!f.education_stage, f.interests.length > 0, f.favorite_subjects.length > 0, true][step];
+  const canNext = [!!f.education_stage && f.first_name.trim().length > 0, f.interests.length > 0, f.favorite_subjects.length > 0, true][step];
 
   const finish = async () => {
     setBusy(true);
@@ -75,8 +76,13 @@ export default function Onboarding() {
         <div key={step} className="mt-8 animate-fade-up">
           {step === 0 && (
             <>
-              <h1 className="text-2xl font-extrabold">Salom, {user?.first_name}! 👋</h1>
-              <p className="mt-1 text-sub">Hozir qayerda o'qiysiz? Bu tavsiyalarni sizga moslashtirishga yordam beradi.</p>
+              <h1 className="text-2xl font-extrabold">Xush kelibsiz{f.first_name ? `, ${f.first_name}` : ""}! 👋</h1>
+              <p className="mt-1 text-sub">Keling, tanishaylik — tavsiyalar sizga moslashadi.</p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Field label="Ism"><input className="input" value={f.first_name} maxLength={60} autoComplete="given-name" onChange={(e) => setF({ ...f, first_name: e.target.value })} /></Field>
+                <Field label="Familiya"><input className="input" value={f.last_name} maxLength={60} autoComplete="family-name" onChange={(e) => setF({ ...f, last_name: e.target.value })} /></Field>
+              </div>
+              <p className="mt-5 font-semibold">Hozir qayerda o'qiysiz?</p>
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {(opts?.stages || []).map((s) => (
                   <button key={s.value} onClick={() => setF({ ...f, education_stage: s.value })} className={cx("card p-4 text-left font-semibold transition", f.education_stage === s.value ? "border-brand ring-4 ring-brand/15" : "hover:border-brand/40")}>

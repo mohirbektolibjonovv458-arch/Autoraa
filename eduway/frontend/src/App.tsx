@@ -4,8 +4,8 @@ import { useAuth } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
 import { PageSkeleton } from "./components/ui";
 import Splash from "./pages/auth/Splash";
-import Welcome from "./pages/auth/Welcome";
-import { Login, Register } from "./pages/auth/AuthPages";
+import PhoneAuth from "./pages/auth/PhoneAuth";
+import { Login } from "./pages/auth/AuthPages";
 import Onboarding from "./pages/auth/Onboarding";
 import Home from "./pages/Home";
 
@@ -52,6 +52,11 @@ function Protected({ children, admin }: { children: ReactNode; admin?: boolean }
   return <>{children}</>;
 }
 
+function ToWelcome() {
+  const loc = useLocation();
+  return <Navigate to={`/welcome${loc.search}`} replace />;
+}
+
 function Entry() {
   const { user, ready } = useAuth();
   const [min, setMin] = useState(true);
@@ -67,9 +72,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Entry />} />
-      <Route path="/welcome" element={<Welcome />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/welcome" element={<PhoneAuth />} />
+      <Route path="/login" element={<ToWelcome />} />
+      <Route path="/register" element={<ToWelcome />} />
+      <Route path="/admin-login" element={<Login />} />
       <Route path="/about" element={<Suspense fallback={<Splash />}><About /></Suspense>} />
       <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
       <Route path="/admin/*" element={<Protected admin><Suspense fallback={<div className="p-6"><PageSkeleton /></div>}><Admin /></Suspense></Protected>} />

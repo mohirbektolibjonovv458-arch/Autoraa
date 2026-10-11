@@ -7,6 +7,8 @@ import sys
 
 from playwright.sync_api import expect, sync_playwright
 
+from helpers import phone_login
+
 BASE = os.getenv("EDUWAY_URL", "http://127.0.0.1:8000")
 ap = argparse.ArgumentParser()
 ap.add_argument("--shots", default="e2e/shots")
@@ -29,26 +31,19 @@ with sync_playwright() as pw:
     page.set_default_timeout(15000)
 
     page.goto(BASE + "/welcome")
-    expect(page.get_by_role("button", name="Yuklab olish", exact=True)).to_be_visible()
+    expect(page.get_by_role("button", name="Ilovani o'rnatish")).to_be_visible()
     # service worker ro'yxatdan o'tadi (o'rnatish uchun shart)
     page.wait_for_function("navigator.serviceWorker && navigator.serviceWorker.controller !== undefined")
     ok = page.evaluate("navigator.serviceWorker.ready.then(r => !!r.active)")
     assert ok, "service worker faol emas"
     manifest = page.evaluate("fetch('/manifest.webmanifest').then(r => r.json())")
     assert any(i["sizes"] == "512x512" for i in manifest["icons"]), manifest
-    page.get_by_role("button", name="Yuklab olish", exact=True).click()
+    page.get_by_role("button", name="Ilovani o'rnatish").click()
     expect(page.get_by_role("dialog").get_by_text("ga o'rnatish")).to_be_visible(timeout=12000)
     shot(page, "40-install-guide")
     page.get_by_role("button", name="Tushunarli").click()
 
-    email = f"f{random.randint(1000, 99999)}@example.com"
-    page.goto(BASE + "/register")
-    page.get_by_label("Ism").fill("Sardor")
-    page.get_by_label("Email").fill(email)
-    page.locator("input[autocomplete=new-password]").fill("Xavfsiz-parol-2026")
-    page.get_by_role("checkbox").check()
-    page.get_by_role("button", name="Akkaunt yaratish").click()
-    page.wait_for_url("**/onboarding")
+    phone_login(page, BASE, f"91{random.randint(1000000, 9999999)}", name="Sardor")
     page.goto(BASE + "/home")
     expect(page.get_by_text("Kunlik challenge").first).to_be_visible()
     expect(page.get_by_text("Eslatmalarni yoqing").first).to_be_visible()

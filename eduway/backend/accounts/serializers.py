@@ -40,11 +40,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "email", "first_name", "last_name", "full_name", "education_stage", "grade", "region",
+            "id", "email", "phone", "first_name", "last_name", "full_name", "education_stage", "grade", "region",
             "interests", "favorite_subjects", "future_goals", "target_countries", "english_level", "ielts_score", "birth_year", "daily_minutes",
             "onboarded", "push_reminders", "plan", "is_premium", "premium_until", "xp", "streak", "best_streak", "is_admin", "date_joined",
         ]
-        read_only_fields = ["id", "email", "premium_until", "xp", "best_streak", "date_joined"]
+        read_only_fields = ["id", "email", "phone", "premium_until", "xp", "best_streak", "date_joined"]
 
     def get_streak(self, u):
         return current_streak(u)

@@ -6,11 +6,14 @@ from django.utils import timezone
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
-    def create_user(self, email, password=None, **extra):
-        if not email:
-            raise ValueError("Email kiritilishi shart")
-        user = self.model(email=self.normalize_email(email).lower(), **extra)
-        user.set_password(password)
+    def create_user(self, email=None, password=None, **extra):
+        if not email and not extra.get("phone"):
+            raise ValueError("Email yoki telefon raqam kiritilishi shart")
+        user = self.model(email=self.normalize_email(email).lower() if email else None, **extra)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()  # telefon orqali kiradigan foydalanuvchilarda parol yo'q
         user.save(using=self._db)
         return user
 
@@ -29,7 +32,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     ]
     LEVELS = [(l, l) for l in ("A1", "A2", "B1", "B2", "C1", "C2")] + [("", "Noma'lum")]
 
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, null=True, blank=True)  # administratorlar email bilan kiradi
+    phone = models.CharField(max_length=16, unique=True, null=True, blank=True)  # +998XXXXXXXXX — o'quvchilar shu bilan kiradi
+    telegram_chat_id = models.BigIntegerField(null=True, blank=True)
     first_name = models.CharField(max_length=60, blank=True)
     last_name = models.CharField(max_length=60, blank=True)
     is_active = models.BooleanField(default=True)
@@ -68,11 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ["-date_joined"]
 
     def __str__(self):
-        return self.email
+        return self.email or self.phone or f"user-{self.pk}"
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}".strip() or self.email.split("@")[0]
+        return f"{self.first_name} {self.last_name}".strip() or (self.email.split("@")[0] if self.email else self.phone or "Foydalanuvchi")
 
     @property
     def is_premium(self):
@@ -81,3 +86,26 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def plan(self):
         return "premium" if self.is_premium else "free"
+
+
+class TelegramLink(models.Model):
+    """Botga kontakt ulashgan raqam: phone -> chat_id. Raqam egasi Telegram tomonidan tasdiqlangan."""
+
+    phone = models.CharField(max_length=16, unique=True)
+    chat_id = models.BigIntegerField()
+    first_name = models.CharField(max_length=64, blank=True)
+    username = models.CharField(max_length=64, blank=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class LoginRequest(models.Model):
+    """Telefon orqali kirish urinishi: deep-link tokeni (botni ilova bilan bog'laydi) va 4 xonali kod (xeshlangan)."""
+
+    LIFETIME = 300  # kod 5 daqiqa amal qiladi
+    token = models.CharField(max_length=32, unique=True)
+    phone = models.CharField(max_length=16, db_index=True)
+    code_hash = models.CharField(max_length=64, blank=True)
+    code_sent_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    used = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)

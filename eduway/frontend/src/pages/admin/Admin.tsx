@@ -102,7 +102,7 @@ function UsersPage() {
       <div className="mb-3 flex gap-2">{[["", "Barchasi"], ["plan=premium", "Premium"], ["plan=free", "Bepul"], ["staff=1", "Adminlar"]].map(([v, l]) => <button key={v} onClick={() => setFilter(v)} className={cx("chip", filter === v && "chip-on")}>{l}</button>)}</div>
       <Crud title="Foydalanuvchilar" endpoint="/admin/users/" fields={[]} filters={filter}
         columns={[
-          { label: "Foydalanuvchi", render: (u) => <div><p className="font-semibold">{u.first_name} {u.last_name}</p><p className="text-xs text-sub">{u.email}</p></div> },
+          { label: "Foydalanuvchi", render: (u) => <div><p className="font-semibold">{u.first_name} {u.last_name}</p><p className="text-xs text-sub">{u.phone || u.email}</p></div> },
           { label: "Tarif", render: (u) => (u.plan === "premium" ? <Badge tone="warn">Premium · {fmtDate(u.premium_until, false)}</Badge> : <Badge tone="muted">Bepul</Badge>) },
           { label: "Rol", render: (u) => (u.is_staff ? <Badge>Admin</Badge> : "—") },
           { label: "Holat", render: (u) => (u.is_active ? <Badge tone="ok">Faol</Badge> : <Badge tone="bad">Bloklangan</Badge>) },

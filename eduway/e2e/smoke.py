@@ -9,6 +9,8 @@ import sys
 
 from playwright.sync_api import expect, sync_playwright
 
+from helpers import phone_login
+
 BASE = os.getenv("EDUWAY_URL", "http://127.0.0.1:8000")
 p = argparse.ArgumentParser()
 p.add_argument("--shots", default="e2e/shots")
@@ -32,22 +34,15 @@ with sync_playwright() as pw:
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.set_default_timeout(15000)
 
-    email = f"test{random.randint(1000, 99999)}@example.com"
+    phone9 = f"90{random.randint(1000000, 9999999)}"
     page.goto(BASE + "/")
     page.wait_for_timeout(400)
     shot(page, "01-splash")
     page.wait_for_url("**/welcome")
     shot(page, "02-welcome")
-    expect(page.get_by_text("EduWay AI nima qiladi?")).to_be_visible()
-    page.get_by_role("link", name="Bepul boshlash").first.click()
-    page.get_by_label("Ism").fill("Malika")
-    page.get_by_label("Familiya").fill("Karimova")
-    page.get_by_label("Email").fill(email)
-    page.locator("input[autocomplete=new-password]").fill("Xavfsiz-parol-2026")
-    page.get_by_role("checkbox").check()
-    shot(page, "03-register")
-    page.get_by_role("button", name="Akkaunt yaratish").click()
+    phone_login(page, BASE, phone9, name="Malika", shot=lambda p: shot(p, "03-bot-step"))
     page.wait_for_url("**/onboarding")
+    page.get_by_label("Familiya").fill("Karimova")
     page.get_by_role("button", name="Maktab").click()
     page.get_by_role("button", name="10", exact=True).click()
     shot(page, "04-onboarding")
@@ -179,7 +174,7 @@ with sync_playwright() as pw:
     ctx2 = browser.new_context(viewport=vp)
     a = ctx2.new_page()
     a.on("pageerror", lambda e: errors.append(str(e)))
-    a.goto(BASE + "/login?next=/admin")
+    a.goto(BASE + "/admin-login?next=/admin")
     a.get_by_label("Email").fill("admin@eduway.uz")
     a.locator("input[type=password]").fill(os.getenv("ADMIN_PASSWORD", "Admin-parol-2026"))
     a.get_by_role("button", name="Kirish").click()
@@ -191,8 +186,9 @@ with sync_playwright() as pw:
     expect(a.get_by_text("Samarqand davlat universiteti")).to_be_visible()
     shot(a, "26-admin-unis")
     a.get_by_role("link", name="Foydalanuvchilar").click()
-    expect(a.get_by_text(email)).to_be_visible()
-    a.locator("tr", has_text=email).get_by_role("button", name="+30 kun").click()
+    shown = f"+998{phone9}"
+    expect(a.get_by_text(shown)).to_be_visible()
+    a.locator("tr", has_text=shown).get_by_role("button", name="+30 kun").click()
     a.wait_for_timeout(500)
     shot(a, "27-admin-users")
 
