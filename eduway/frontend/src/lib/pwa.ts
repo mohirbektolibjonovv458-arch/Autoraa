@@ -19,11 +19,24 @@ if (typeof window !== "undefined") {
 
 export function registerSW() {
   if (!("serviceWorker" in navigator) || import.meta.env.DEV) return;
-  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => {}); });
+  // darhol ro'yxatdan o'tkazamiz: brauzer «o'rnatish mumkin» deb tezroq aniqlaydi
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+/** O'rnatish oynasi tayyor bo'lishini kutadi (sahifa endi ochilgan bo'lsa brauzerga bir necha soniya kerak). */
+function waitForPrompt(ms: number): Promise<boolean> {
+  if (deferred) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const done = () => { listeners.delete(check); clearTimeout(t); resolve(!!deferred); };
+    const check = () => { if (deferred) done(); };
+    const t = setTimeout(done, ms);
+    listeners.add(check);
+  });
 }
 
 export const platform = () => {
   const ua = navigator.userAgent;
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
   const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   return {
     ios,
@@ -31,6 +44,9 @@ export const platform = () => {
     iosSafari: ios && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|YaBrowser/i.test(ua),
     // Telegram, Instagram, Facebook ichidagi brauzerlar ilova o'rnatishga ruxsat bermaydi
     inApp: /Telegram|Instagram|FBAN|FBAV|Line\/|; wv\)|TikTok/i.test(ua),
+    mobile,
+    browser: /YaBrowser/i.test(ua) ? "yandex" : /SamsungBrowser/i.test(ua) ? "samsung" : /Firefox|FxiOS/i.test(ua) ? "firefox"
+      : /OPR\/|Opera/i.test(ua) ? "opera" : /Edg\//i.test(ua) ? "edge" : /Chrome|CriOS/i.test(ua) ? "chrome" : /Safari/i.test(ua) ? "safari" : "other",
     standalone: window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true,
   };
 };
@@ -44,6 +60,7 @@ export function useInstall() {
     canPrompt: !!deferred,
     platform: p,
     async prompt() {
+      if (!deferred && !p.ios && !p.inApp) await waitForPrompt(6000);
       if (!deferred) return "unavailable" as const;
       await deferred.prompt();
       const r = await deferred.userChoice;

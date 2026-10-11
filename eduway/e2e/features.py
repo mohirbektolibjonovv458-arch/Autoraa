@@ -37,7 +37,7 @@ with sync_playwright() as pw:
     manifest = page.evaluate("fetch('/manifest.webmanifest').then(r => r.json())")
     assert any(i["sizes"] == "512x512" for i in manifest["icons"]), manifest
     page.get_by_role("button", name="Yuklab olish", exact=True).click()
-    expect(page.get_by_role("dialog").get_by_text("Telefonga o'rnatish")).to_be_visible()
+    expect(page.get_by_role("dialog").get_by_text("ga o'rnatish")).to_be_visible(timeout=12000)
     shot(page, "40-install-guide")
     page.get_by_role("button", name="Tushunarli").click()
 
@@ -51,7 +51,7 @@ with sync_playwright() as pw:
     page.wait_for_url("**/onboarding")
     page.goto(BASE + "/home")
     expect(page.get_by_text("Kunlik challenge").first).to_be_visible()
-    expect(page.get_by_text("Eslatmalarni yoqing")).to_be_visible()
+    expect(page.get_by_text("Eslatmalarni yoqing").first).to_be_visible()
     shot(page, "41-home")
 
     # Qidiruv

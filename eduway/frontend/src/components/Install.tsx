@@ -18,7 +18,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 export function InstallGuide({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { platform: p } = useInstall();
   return (
-    <Modal open={open} onClose={onClose} title="Telefonga o'rnatish">
+    <Modal open={open} onClose={onClose} title={p.mobile ? "Telefonga o'rnatish" : "Kompyuterga o'rnatish"}>
       <div className="mb-4 flex items-center gap-3 rounded-2xl bg-muted p-3">
         <LogoMark className="h-12 w-12" />
         <div><p className="font-bold">EduWay AI</p><p className="text-sm text-sub">Bosh ekranda ilova sifatida ochiladi, bildirishnomalar keladi</p></div>
@@ -43,11 +43,37 @@ export function InstallGuide({ open, onClose }: { open: boolean; onClose: () => 
             <Step n={4}>Bosh ekrandagi <b>EduWay AI</b> belgisidan oching va bildirishnomalarni yoqing</Step>
           </ol>
         </>
+      ) : p.mobile ? (
+        <ol className="space-y-3">
+          {p.browser === "samsung" ? (<>
+            <Step n={1}>Pastdagi <b>☰ menyu</b> tugmasini bosing</Step>
+            <Step n={2}><b>«+ Добавить страницу в» → «Главный экран»</b> (Add page to → Home screen) ni tanlang</Step>
+          </>) : p.browser === "yandex" ? (<>
+            <Step n={1}>Pastdagi <b>⋮</b> menyusini bosing</Step>
+            <Step n={2}><b>«Добавить ярлык»</b> yoki <b>«Установить приложение»</b> ni tanlang</Step>
+          </>) : p.browser === "firefox" ? (<>
+            <Step n={1}>Brauzer menyusini oching <MoreVertical className="inline h-4 w-4 text-brand" /></Step>
+            <Step n={2}><b>«Установить» / «Add to Home screen»</b> ni tanlang</Step>
+          </>) : (<>
+            <Step n={1}>Brauzer menyusini oching <MoreVertical className="inline h-4 w-4 text-brand" /> (o'ng yuqorida)</Step>
+            <Step n={2}><b>«Установить приложение» / «Install app»</b> yoki <b>«Добавить на главный экран»</b> ni tanlang</Step>
+          </>)}
+          <Step n={3}><b>«Установить» / «Добавить»</b> ni tasdiqlang — EduWay AI telefon ekraningizda paydo bo'ladi</Step>
+          <p className="rounded-xl bg-muted p-3 text-xs text-sub">Eng oson yo'l — saytni <b>Google Chrome</b>da ochish: u yerda «Yuklab olish» tugmasi bir bosishda o'rnatadi.</p>
+        </ol>
       ) : (
         <ol className="space-y-3">
-          <Step n={1}>Brauzer menyusini oching <MoreVertical className="inline h-4 w-4 text-brand" /> (Chrome'da o'ng yuqorida)</Step>
-          <Step n={2}><b>«Установить приложение» / «Install app»</b> yoki <b>«Добавить на главный экран»</b> ni tanlang</Step>
-          <Step n={3}><b>«Установить» / «Install»</b> ni bosing — EduWay AI telefon ekraningizda paydo bo'ladi</Step>
+          {p.browser === "safari" ? (<>
+            <Step n={1}>Yuqori menyudan <b>«Файл / File»</b> ni oching</Step>
+            <Step n={2}><b>«Добавить в Dock» / «Add to Dock»</b> ni tanlang (macOS Sonoma va yangi)</Step>
+          </>) : p.browser === "firefox" ? (<>
+            <Step n={1}>Firefox kompyuterda ilova o'rnatishni qo'llab-quvvatlamaydi</Step>
+            <Step n={2}>Saytni <b>Google Chrome</b> yoki <b>Microsoft Edge</b>da oching va «Yuklab olish» ni bosing</Step>
+          </>) : (<>
+            <Step n={1}>Manzil satrining o'ng tomonidagi <b>o'rnatish belgisini</b> <Download className="inline h-4 w-4 text-brand" /> bosing</Step>
+            <Step n={2}>Yoki menyu <MoreVertical className="inline h-4 w-4 text-brand" /> → <b>«Установить EduWay AI» / «Install EduWay AI»</b> (Edge'da: «Приложения → Установить»)</Step>
+            <Step n={3}><b>«Установить»</b> ni bosing — EduWay AI ish stolida va Pusk menyusida paydo bo'ladi</Step>
+          </>)}
         </ol>
       )}
       <button className="btn-primary mt-5 w-full" onClick={onClose}>Tushunarli</button>
@@ -61,15 +87,19 @@ export function InstallButton({ className = "btn-primary", label = "Ilovani yukl
   const [guide, setGuide] = useState(false);
   const toast = useToast();
   if (inst.installed) return null;
+  const [busy, setBusy] = useState(false);
   const click = async () => {
-    if (inst.canPrompt) {
+    setBusy(true);
+    try {
+      // brauzer o'rnatish oynasini ochadi (tayyor bo'lmasa bir necha soniya kutadi); bo'lmasa — qo'llanma
       const r = await inst.prompt();
-      if (r === "accepted") toast("EduWay AI telefoningizga o'rnatildi 🎉");
-    } else setGuide(true);
+      if (r === "accepted") toast("EduWay AI o'rnatildi 🎉 Uni bosh ekrandan oching");
+      else if (r === "unavailable") setGuide(true);
+    } finally { setBusy(false); }
   };
   return (
     <>
-      <button className={className} onClick={click}><Download className="h-5 w-5" /> {label}</button>
+      <button className={className} onClick={click} disabled={busy}>{busy ? <Spinner className="h-5 w-5" /> : <Download className="h-5 w-5" />} {busy ? "Tayyorlanmoqda..." : label}</button>
       <InstallGuide open={guide} onClose={() => setGuide(false)} />
     </>
   );
