@@ -28,6 +28,11 @@ if len(SECRET_KEY) < 40:
 DEBUG = env_bool("DEBUG")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+# Railway domenini avtomatik qo'shamiz (RAILWAY_PUBLIC_DOMAIN platforma tomonidan beriladi)
+RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if RAILWAY_DOMAIN:
+    ALLOWED_HOSTS += [RAILWAY_DOMAIN, "healthcheck.railway.app"]
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RAILWAY_DOMAIN}")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -80,7 +85,23 @@ TEMPLATES = [
     }
 ]
 
-if os.getenv("POSTGRES_DB"):
+if os.getenv("DATABASE_URL"):
+    # Railway / Heroku uslubidagi ulanish satri: postgresql://user:pass@host:port/db
+    from urllib.parse import unquote, urlparse
+
+    _u = urlparse(os.environ["DATABASE_URL"])
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _u.path.lstrip("/"),
+            "USER": unquote(_u.username or ""),
+            "PASSWORD": unquote(_u.password or ""),
+            "HOST": _u.hostname or "",
+            "PORT": str(_u.port or 5432),
+            "CONN_MAX_AGE": 60,
+        }
+    }
+elif os.getenv("POSTGRES_DB"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -146,9 +167,10 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_REFERRER_POLICY = "same-origin"
-    if env_bool("HTTPS"):
+    if env_bool("HTTPS") or RAILWAY_DOMAIN:
         SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
         SECURE_SSL_REDIRECT = True
+        SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]  # platforma healthcheck'i ichki HTTP orqali keladi
         SESSION_COOKIE_SECURE = True
         CSRF_COOKIE_SECURE = True
         SECURE_HSTS_SECONDS = 31536000

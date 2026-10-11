@@ -1,3 +1,4 @@
+# Railway / Docker uchun. Ilova faqat platforma proksisi orqali ochiladi, shuning uchun X-Forwarded-* sarlavhalariga ishonamiz.
 # ---------- 1) Frontend ----------
 FROM node:20-alpine AS web
 WORKDIR /src/frontend
@@ -19,4 +20,4 @@ USER eduway
 ENV PORT=8000
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/health/' % os.getenv('PORT','8000'))" || exit 1
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_content && python manage.py collectstatic --noinput -v0 && waitress-serve --host=0.0.0.0 --port=${PORT} --threads=8 config.wsgi:application"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_content && python manage.py collectstatic --noinput -v0 && waitress-serve --host=0.0.0.0 --port=${PORT} --threads=8 --trusted-proxy='*' --trusted-proxy-headers='x-forwarded-proto x-forwarded-for' config.wsgi:application"]

@@ -88,6 +88,26 @@ cd eduway/frontend && npm install && npm run dev     # http://localhost:5173, /a
 
 Kalit brauzerga yuborilmaydi va repozitoriyga yozilmaydi (`.env` fayli `.gitignore`da). AI xatolari (noto‘g‘ri kalit, limit, timeout, tarmoq) foydalanuvchiga tushunarli xabar sifatida ko‘rsatiladi va `ErrorLog`ga yoziladi. Muvaffaqiyatsiz so‘rov kunlik limitdan yechilmaydi.
 
+## Railway'ga joylash
+
+1. Ushbu papka ichidagilarni (README, `Dockerfile`, `railway.json`, `backend/`, `frontend/` ...) yangi GitHub repozitoriy **ildiziga** yuklang.
+2. Railway → **New Project → Deploy from GitHub repo** → repozitoriyni tanlang. `railway.json` va `Dockerfile` avtomatik ishlatiladi.
+3. Shu loyihaga **+ New → Database → PostgreSQL** qo'shing.
+4. Ilova servisi → **Variables**:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Postgres servisiga havola)
+   - `DEBUG` = `0`
+   - `ANTHROPIC_API_KEY` = kalitingiz (AI uchun)
+   - ixtiyoriy: `AI_MODEL`, `AI_DAILY_LIMIT_FREE`, `AI_DAILY_LIMIT_PREMIUM`, `PREMIUM_PRICE_UZS`, `PREMIUM_PAYMENT_INSTRUCTIONS`
+   - `SECRET_KEY` = kamida 50 belgili tasodifiy satr (berilmasa, har deployda yangisi yaratiladi va foydalanuvchilar qayta kirishi kerak bo'ladi)
+5. **Settings → Networking → Generate Domain.** Domen `ALLOWED_HOSTS`ga avtomatik qo'shiladi (`RAILWAY_PUBLIC_DOMAIN`), HTTPS sozlamalari ham avtomatik yoqiladi.
+6. Admin yaratish: servis → **⋯ → Shell** (yoki `railway ssh`) orqali:
+   ```bash
+   python manage.py create_admin
+   python manage.py check_ai        # AI kaliti ishlayotganini tekshirish
+   ```
+
+Har deployda migratsiyalar va boshlang'ich kontent avtomatik qo'llanadi. Kontent takroran yuklanmaydi va admin kiritgan o'zgarishlarni bosib ketmaydi.
+
 ## Serverga joylash (Docker + PostgreSQL)
 
 ```bash
