@@ -1,0 +1,31 @@
+# Ishga tushirish:  cp backend/.env.example backend/.env  (to'ldiring)  &&  docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: eduway
+      POSTGRES_USER: eduway
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD ni muhitda yoki .env da bering}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eduway"]
+      interval: 10s
+      retries: 5
+
+  app:
+    build: .
+    restart: always
+    env_file: backend/.env
+    environment:
+      POSTGRES_DB: eduway
+      POSTGRES_USER: eduway
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  pgdata:

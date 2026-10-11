@@ -1,0 +1,9 @@
+{
+  "name": "EduWay AI",
+  "short_name": "EduWay",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#0B1030",
+  "theme_color": "#0B1030",
+  "icons": [{ "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
