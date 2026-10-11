@@ -27,6 +27,11 @@ admin_urls = [
 urlpatterns = [
     path("health/", views.health),
     path("dashboard/", views.dashboard),
+    path("search/", views.search),
+    path("push/key/", views.push_key),
+    path("push/subscribe/", views.push_subscribe),
+    path("push/unsubscribe/", views.push_unsubscribe),
+    path("push/test/", views.push_test),
     path("notifications/", views.notifications),
     path("notifications/read/", views.notifications_read),
     path("admin/", include(admin_urls)),

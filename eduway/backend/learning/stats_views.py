@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import timedelta
 
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -25,7 +26,7 @@ def stats(request):
     for i in range(days):
         d = start + timedelta(days=i)
         a = act.get(d)
-        activity.append({"date": d, "xp": a.xp if a else 0, "tasks": a.tasks_done if a else 0, "quizzes": a.quizzes if a else 0})
+        activity.append({"date": d, "xp": a.xp if a else 0, "tasks": a.tasks_done if a else 0, "quizzes": a.quizzes if a else 0, "focus": a.focus_minutes if a else 0})
 
     attempts = list(Attempt.objects.filter(user=u, finished_at__isnull=False).select_related("quiz").order_by("finished_at"))
     by_subject = defaultdict(list)
@@ -46,6 +47,7 @@ def stats(request):
             "lessons": LessonProgress.objects.filter(user=u).count(),
             "words": VocabWord.objects.filter(user=u).count(),
             "open_mistakes": Mistake.objects.filter(user=u, resolved=False).count(),
+            "focus_minutes": ActivityDay.objects.filter(user=u).aggregate(s=Sum("focus_minutes"))["s"] or 0,
         },
         "activity": activity,
         "subjects": subjects,

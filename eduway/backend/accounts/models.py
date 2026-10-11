@@ -49,6 +49,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
     daily_minutes = models.PositiveSmallIntegerField(default=30)
     onboarded = models.BooleanField(default=False)
+    push_reminders = models.BooleanField(default=True)  # kunlik eslatmalar (seriya, challenge, muddatlar)
 
     # Tarif
     premium_until = models.DateTimeField(null=True, blank=True)

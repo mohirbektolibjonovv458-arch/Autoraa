@@ -151,3 +151,31 @@ class StudyTask(models.Model):
 
     class Meta:
         ordering = ["date", "done", "id"]
+
+
+class FocusSession(models.Model):
+    """Fokus taymer sessiyasi. Davomiylik server vaqti bo'yicha hisoblanadi (mijoz yuborgan raqamga ishonmaymiz)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="focus_sessions")
+    label = models.CharField(max_length=120, blank=True)
+    task = models.ForeignKey(StudyTask, null=True, blank=True, on_delete=models.SET_NULL)
+    planned_minutes = models.PositiveSmallIntegerField()
+    minutes = models.PositiveSmallIntegerField(default=0)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+
+
+class DailyChallenge(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="challenges")
+    date = models.DateField()
+    score = models.PositiveSmallIntegerField()
+    total = models.PositiveSmallIntegerField()
+    answers = models.JSONField(default=dict)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "date")
+        ordering = ["-date"]

@@ -26,6 +26,7 @@ class ActivityDay(models.Model):
     ai_messages = models.PositiveIntegerField(default=0)
     words_reviewed = models.PositiveIntegerField(default=0)
     lessons = models.PositiveIntegerField(default=0)
+    focus_minutes = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ("user", "date")
@@ -51,3 +52,21 @@ class ErrorLog(models.Model):
 
     class Meta:
         ordering = ["-created"]
+
+
+class KeyValue(models.Model):
+    """Server ichki sozlamalari (masalan, avtomatik yaratilgan VAPID kalitlari, rejalashtiruvchining oxirgi ishga tushgan sanasi)."""
+
+    key = models.CharField(max_length=60, unique=True)
+    value = models.TextField()
+
+
+class PushSubscription(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_subscriptions")
+    endpoint = models.URLField(max_length=600, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    user_agent = models.CharField(max_length=200, blank=True)
+    failures = models.PositiveSmallIntegerField(default=0)
+    created = models.DateTimeField(auto_now_add=True)
+    last_success = models.DateTimeField(null=True, blank=True)

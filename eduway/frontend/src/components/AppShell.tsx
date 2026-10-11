@@ -1,11 +1,13 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Bell, BookOpen, Bot, Compass, Crown, GraduationCap, Home, LayoutDashboard, LineChart, LogOut, Moon, Settings, Sparkles, Sun, Target, User as UserIcon } from "lucide-react";
+import { Bell, Search as SearchIcon, BookOpen, Bot, Compass, Crown, GraduationCap, Home, LayoutDashboard, LineChart, LogOut, Moon, Settings, Sparkles, Sun, Target, User as UserIcon } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { get } from "../lib/api";
 import { useTheme } from "../lib/theme";
 import { Logo } from "./Logo";
 import { cx } from "./ui";
+import { SearchModal } from "./Search";
+import { syncPush } from "../lib/pwa";
 
 const TABS = [
   { to: "/home", label: "Bosh sahifa", icon: Home, match: ["/home"] },
@@ -62,6 +64,13 @@ export function AppShell({ children }: { children?: ReactNode }) {
   const loc = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [loc.pathname]);
   const fullBleed = loc.pathname.startsWith("/ai");
+  const [search, setSearch] = useState(false);
+  useEffect(() => { syncPush(); }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearch(true); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="min-h-screen lg:flex">
@@ -104,6 +113,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <Link to="/home" className="lg:hidden"><Logo /></Link>
             <div className="hidden lg:block" />
             <div className="flex items-center gap-2">
+              <button onClick={() => setSearch(true)} aria-label="Qidirish" className="flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sub hover:bg-muted">
+                <SearchIcon className="h-5 w-5" /><span className="hidden text-sm sm:inline">Qidirish</span><kbd className="hidden rounded-md bg-muted px-1.5 text-[11px] font-semibold lg:inline">Ctrl K</kbd>
+              </button>
               <ThemeButton />
               <BellButton />
             </div>
@@ -114,6 +126,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         </main>
       </div>
 
+      <SearchModal open={search} onClose={() => setSearch(false)} />
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line/70 bg-surface/90 backdrop-blur-xl lg:hidden safe-bottom" aria-label="Asosiy menyu">
         <div className="mx-auto grid max-w-lg grid-cols-5 px-2 pt-1.5 pb-1.5">

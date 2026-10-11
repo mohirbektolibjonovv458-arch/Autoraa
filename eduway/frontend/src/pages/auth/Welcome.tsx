@@ -4,6 +4,7 @@ import { ArrowRight, Bot, Compass, GraduationCap, Target } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import { cx } from "../../components/ui";
 import { useAuth } from "../../lib/auth";
+import { InstallButton } from "../../components/Install";
 
 const SLIDES = [
   { icon: Compass, title: "O'zingizga mos kasbni toping", text: "Qiziqishlar, kuchli tomonlar va maqsadlaringiz asosida kasb yo'nalishlarini o'rganing — har bir tavsiya sababi bilan.", color: "from-violet-500 to-indigo-600" },
@@ -32,7 +33,10 @@ export default function Welcome() {
       <div className="flex min-h-screen flex-col px-6 pb-8 pt-6 safe-bottom">
         <div className="flex items-center justify-between lg:justify-end">
           <span className="lg:hidden"><Logo /></span>
-          {!last && <button className="text-sm font-semibold text-sub" onClick={() => setI(SLIDES.length - 1)}>O'tkazib yuborish</button>}
+          <div className="flex items-center gap-2">
+            <InstallButton className="btn-soft btn-sm" label="Yuklab olish" />
+            {!last && <button className="text-sm font-semibold text-sub" onClick={() => setI(SLIDES.length - 1)}>O'tkazib yuborish</button>}
+          </div>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <div key={i} className="animate-fade-up">
@@ -51,6 +55,7 @@ export default function Welcome() {
             <>
               <Link to="/register" className="btn-primary w-full h-12">Boshlash — bepul <ArrowRight className="h-5 w-5" /></Link>
               <Link to="/login" className="btn-outline w-full h-12">Akkauntim bor</Link>
+              <InstallButton className="btn-ghost w-full h-12 text-brand" label="Telefonga ilova sifatida o'rnatish" />
             </>
           ) : (
             <button className="btn-primary w-full h-12" onClick={() => setI(i + 1)}>Davom etish <ArrowRight className="h-5 w-5" /></button>

@@ -21,7 +21,7 @@ export default function English() {
           <div>
             <p className="text-white/70">Sizning darajangiz</p>
             <p className="text-4xl font-extrabold">{d.level || "—"}</p>
-            {!d.level && <Link to="/settings" className="text-sm font-semibold underline">Profilda belgilang</Link>}
+            <Link to="/english/placement" className="text-sm font-semibold underline">{d.level ? "Qayta aniqlash" : "Darajani aniqlash testi"}</Link>
           </div>
           <div className="grid grid-cols-2 gap-2 text-center">
             <div className="rounded-2xl bg-white/15 px-3 py-2"><p className="text-xl font-extrabold">{d.total_words}</p><p className="text-[11px] text-white/70">so'z</p></div>

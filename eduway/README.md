@@ -45,7 +45,14 @@ O‘quvchilar uchun ta’lim platformasi. EduWay (kasb, universitet, grantlar) v
 | Admin panel (`/admin`) | ✅ | Foydalanuvchilar, Premium so‘rovlar, universitetlar va yo‘nalishlar, grantlar, kasblar, testlar va savollar, darslar, AI moderatsiyasi, xatolar jurnali, xizmat holati |
 | Django admin (`/django-admin/`) | ✅ | Zaxira boshqaruv paneli |
 | Parolni email orqali tiklash | ⛔ | SMTP sozlamasi kerak. Hozircha server administratori `python manage.py changepassword <email>` bilan parolni almashtira oladi |
-| Mobil ilova (App Store / Play) | ⛔ | Veb-ilova telefon uchun moslashtirilgan va «Bosh ekranga qo‘shish» manifesti bor |
+| Telefonga ilova sifatida o'rnatish (PWA) | ✅ | Android/Chrome/Edge'da «Yuklab olish» tugmasi bir bosishda o'rnatadi; iPhone'da Safari orqali qadamma-qadam qo'llanma chiqadi. Ikonka, ishga tushish ekrani, offline sahifa |
+| Push-bildirishnomalar (ilova yopiq bo'lsa ham) | ✅ | Barcha ilova ichidagi bildirishnomalar telefonga ham boradi. VAPID kalitlari avtomatik yaratilib bazada saqlanadi — sozlash shart emas. iPhone'da faqat Bosh ekranga o'rnatilgan ilovada ishlaydi (iOS 16.4+) |
+| Kunlik eslatmalar | ✅ | Server o'zi 09:00 da grant muddatlari, 19:00 da seriya/challenge eslatmasini yuboradi (cron shart emas). Foydalanuvchi sozlamalarda o'chira oladi |
+| Kunlik challenge | ✅ | Har kuni har bir foydalanuvchiga 5 ta savol, bonus XP, xatolar takrorlash ro'yxatiga tushadi |
+| Fokus taymer (Pomodoro) | ✅ | Vaqt server tomonida hisoblanadi, kunlik maqsad, vazifaga bog'lash |
+| Ingliz tili darajasini aniqlash testi | ✅ | 25 savol (A1–C1), natija profilga yoziladi |
+| Global qidiruv (Ctrl+K) | ✅ | Kasblar, universitetlar, grantlar, darslar, testlar |
+| App Store / Google Play'dagi native ilova | ⛔ | PWA bilan o'rnatish yetarli; do'konlarga chiqarish uchun alohida qadoqlash kerak |
 
 ### Ma’lumotlar ishonchliligi
 

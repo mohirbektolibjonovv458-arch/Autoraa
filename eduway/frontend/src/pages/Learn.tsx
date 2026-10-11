@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Brain, LineChart, Mic, PenLine, RefreshCw, Sparkles, Target } from "lucide-react";
+import { ArrowRight, GraduationCap, Timer, Zap, BookOpen, Brain, LineChart, Mic, PenLine, RefreshCw, Sparkles, Target } from "lucide-react";
 import { PageHeader } from "../components/ui";
 
 const ITEMS = [
+  { to: "/challenge", icon: Zap, title: "Kunlik challenge", text: "Har kuni 5 ta yangi savol va bonus XP", color: "from-amber-400 to-rose-500" },
+  { to: "/focus", icon: Timer, title: "Fokus taymer", text: "Pomodoro: diqqat bilan o'qish vaqtini hisoblash", color: "from-violet-500 to-fuchsia-600" },
+  { to: "/english/placement", icon: GraduationCap, title: "Ingliz tili darajasini aniqlash", text: "25 savol — A1 dan C1 gacha", color: "from-sky-500 to-cyan-600" },
   { to: "/plan", icon: Target, title: "O'quv reja", text: "Maqsad, kunlik va haftalik vazifalar", color: "from-indigo-500 to-violet-600" },
   { to: "/english", icon: BookOpen, title: "Ingliz tili va IELTS", text: "Darslar, lug'at, Writing va Speaking", color: "from-sky-500 to-indigo-600" },
   { to: "/practice", icon: Sparkles, title: "Testlar", text: "Fanlar bo'yicha vaqtli testlar va AI generator", color: "from-fuchsia-500 to-violet-600" },

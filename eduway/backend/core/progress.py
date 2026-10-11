@@ -19,6 +19,11 @@ ACHIEVEMENTS = {
     "tasks_10": {"title": "Rejaga sodiq", "desc": "10 ta vazifani bajardingiz", "icon": "target"},
     "ai_curious": {"title": "Qiziquvchan", "desc": "AI yordamchiga 10 ta savol berdingiz", "icon": "bot"},
     "goal_setter": {"title": "Maqsad qo'ydingiz", "desc": "Birinchi o'quv maqsadini yaratdingiz", "icon": "flag"},
+    "focus_60": {"title": "Bir soat diqqat", "desc": "Fokus taymerda jami 60 daqiqa", "icon": "timer"},
+    "focus_600": {"title": "Chuqur ish ustasi", "desc": "Fokus taymerda jami 10 soat", "icon": "timer"},
+    "challenge_1": {"title": "Kun savollari", "desc": "Birinchi kunlik challenge", "icon": "zap"},
+    "challenge_7": {"title": "Challenge haftasi", "desc": "7 ta kunlik challenge bajarildi", "icon": "zap"},
+    "english_placed": {"title": "Darajam aniq", "desc": "Ingliz tili darajasini aniqlash testi", "icon": "book"},
 }
 
 XP = {"task": 10, "quiz": 20, "lesson": 15, "word": 2, "ai": 1, "career_test": 30}
@@ -41,7 +46,7 @@ def award(user, code):
 @transaction.atomic
 def record(user, kind, amount=1, xp=None):
     """Faollikni qayd qiladi: kunlik hisoblagich, XP va streak."""
-    field = {"task": "tasks_done", "quiz": "quizzes", "ai": "ai_messages", "word": "words_reviewed", "lesson": "lessons"}.get(kind)
+    field = {"task": "tasks_done", "quiz": "quizzes", "ai": "ai_messages", "word": "words_reviewed", "lesson": "lessons", "focus": "focus_minutes"}.get(kind)
     gained = XP.get(kind, 0) * amount if xp is None else xp
     d = today()
     day, _ = ActivityDay.objects.get_or_create(user=user, date=d)

@@ -284,3 +284,90 @@ class AITests(Base):
         client.return_value.beta.messages.create.return_value = fake_response(json.dumps(plan))
         r = self.c.post(f"/api/ai/plan/{goal['id']}/", format="json")
         self.assertEqual(r.json()["created"], 7)
+
+
+class NewFeatureTests(Base):
+    def test_focus_minutes_counted_by_server_time(self):
+        from learning.models import FocusSession
+
+        s = self.c.post("/api/learn/focus/start/", {"minutes": 25, "label": "Matematika"}, format="json").json()
+        self.assertEqual(self.c.post("/api/learn/focus/start/", {"minutes": 500}, format="json").status_code, 400)
+        # mijoz vaqtini aldab bo'lmaydi: darhol yakunlasa 0 daqiqa
+        FocusSession.objects.filter(pk=s["id"]).update(started_at=timezone.now() - timedelta(minutes=40))
+        r = self.c.post(f"/api/learn/focus/{s['id']}/finish/", {}, format="json").json()
+        self.assertEqual(r["minutes"], 25)  # rejalashtirilgandan oshmaydi
+        self.assertEqual(r["today"], 25)
+        self.assertEqual(self.c.post(f"/api/learn/focus/{s['id']}/finish/", {}, format="json").status_code, 400)
+        s2 = self.c.post("/api/learn/focus/start/", {"minutes": 15}, format="json").json()
+        self.assertEqual(self.c.post(f"/api/learn/focus/{s2['id']}/finish/", {}, format="json").json()["minutes"], 0)
+        self.assertEqual(self.c.get("/api/learn/focus/").json()["today"], 25)
+        self.assertEqual(self.c.get("/api/dashboard/").json()["focus"]["today"], 25)
+
+    def test_daily_challenge_once_per_day(self):
+        d = self.c.get("/api/learn/challenge/").json()
+        self.assertFalse(d["done"])
+        self.assertEqual(len(d["questions"]), 5)
+        self.assertEqual([q["id"] for q in d["questions"]], [q["id"] for q in self.c.get("/api/learn/challenge/").json()["questions"]])
+        answers = {str(q.id): q.correct_index for q in Question.objects.filter(pk__in=[q["id"] for q in d["questions"]])}
+        r = self.c.post("/api/learn/challenge/submit/", {"answers": answers}, format="json").json()
+        self.assertEqual(r["score"], 5)
+        self.assertEqual(self.c.post("/api/learn/challenge/submit/", {"answers": answers}, format="json").status_code, 400)
+        self.assertTrue(self.c.get("/api/learn/challenge/").json()["done"])
+        self.assertTrue(self.c.get("/api/dashboard/").json()["challenge_done"])
+
+    def test_placement_sets_level(self):
+        from learning.placement import QUESTIONS
+
+        qs = self.c.get("/api/learn/placement/").json()["questions"]
+        self.assertNotIn("correct", qs[0])
+        ans = {str(q["id"]): q["correct"] for q in QUESTIONS if q["level"] in ("A1", "A2", "B1")}
+        r = self.c.post("/api/learn/placement/submit/", {"answers": ans}, format="json").json()
+        self.assertEqual(r["level"], "B1")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.english_level, "B1")
+        self.assertEqual(self.c.post("/api/learn/placement/submit/", {"answers": {}}, format="json").json()["level"], "A1")
+
+    def test_search(self):
+        r = self.c.get("/api/search/?q=Toshkent").json()["results"]
+        self.assertTrue(any(x["type"] == "university" for x in r))
+        self.assertTrue(any(x["type"] == "career" for x in self.c.get("/api/search/?q=dasturchi").json()["results"]))
+        self.assertEqual(self.c.get("/api/search/?q=a").json()["results"], [])
+
+
+class PushTests(Base):
+    def test_subscribe_and_notification_push(self):
+        from unittest import mock as m
+
+        k = self.c.get("/api/push/key/").json()
+        self.assertEqual(len(k["public_key"]), 87)
+        self.assertEqual(self.c.get("/api/push/key/").json()["public_key"], k["public_key"])  # barqaror
+        bad = {"subscription": {"endpoint": "https://evil.example/x", "keys": {"p256dh": "a", "auth": "b"}}}
+        self.assertEqual(self.c.post("/api/push/subscribe/", bad, format="json").status_code, 400)
+        good = {"subscription": {"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "p", "auth": "a"}}}
+        self.assertEqual(self.c.post("/api/push/subscribe/", good, format="json").status_code, 201)
+        class SyncThread:  # fon oqimini testda sinxron bajaramiz
+            def __init__(self, target, args, **kw):
+                self.target, self.args = target, args
+
+            def start(self):
+                self.target(*self.args)
+
+        with m.patch("pywebpush.webpush") as wp, m.patch("core.push.threading.Thread", SyncThread), \
+                m.patch("core.push.close_old_connections"), self.captureOnCommitCallbacks(execute=True):
+            from core.progress import notify
+            notify(self.user, "Salom", "Test")
+        self.assertTrue(wp.called)
+        payload = wp.call_args.kwargs["data"]
+        self.assertIn("Salom", payload)
+
+    def test_evening_reminder_only_for_inactive_subscribed(self):
+        from core.models import Notification, PushSubscription
+        from core.scheduler import evening_reminders
+
+        PushSubscription.objects.create(user=self.user, endpoint="https://fcm.googleapis.com/fcm/send/x", p256dh="p", auth="a")
+        with mock.patch("core.push.notify_push"):
+            self.assertEqual(evening_reminders(), 1)
+            self.assertTrue(Notification.objects.filter(user=self.user, kind="reminder").exists())
+            self.user.push_reminders = False
+            self.user.save()
+            self.assertEqual(evening_reminders(), 0)

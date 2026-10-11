@@ -38,6 +38,9 @@ const Premium = lazy(() => import("./pages/Premium"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/admin/Admin"));
+const Focus = lazy(() => import("./pages/Focus"));
+const Challenge = lazy(() => import("./pages/Challenge"));
+const Placement = lazy(() => import("./pages/english/Placement"));
 
 function Protected({ children, admin }: { children: ReactNode; admin?: boolean }) {
   const { user, ready } = useAuth();
@@ -99,6 +102,9 @@ export default function App() {
         <Route path="/premium" element={page(<Premium />)} />
         <Route path="/profile" element={page(<Profile />)} />
         <Route path="/settings" element={page(<Settings />)} />
+        <Route path="/focus" element={page(<Focus />)} />
+        <Route path="/challenge" element={page(<Challenge />)} />
+        <Route path="/english/placement" element={page(<Placement />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

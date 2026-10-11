@@ -35,6 +35,15 @@ export default function Universities() {
   const [error, setError] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [compare, setCompare] = useState<number[]>([]);
+  const [more, setMore] = useState(false);
+  const loadMore = async () => {
+    if (!data?.next) return;
+    setMore(true);
+    try {
+      const next = await get(`/universities/${new URL(data.next, location.origin).search}`);
+      setData({ ...next, results: [...data.results, ...next.results] });
+    } catch { /* ignore */ } finally { setMore(false); }
+  };
 
   useEffect(() => { get("/universities/filters/").then(setFilters).catch(() => {}); }, []);
   useEffect(() => {
@@ -102,7 +111,7 @@ export default function Universities() {
             </div>
           </Link>
         ))}
-        {data?.next && <p className="text-center text-sm text-sub">Ko'proq natija uchun qidiruvni aniqlashtiring.</p>}
+        {data?.next && <button className="btn-outline w-full" disabled={more} onClick={loadMore}>{more ? "Yuklanmoqda..." : `Ko'proq ko'rsatish (${data.count - data.results.length} ta qoldi)`}</button>}
       </div>
 
       {compare.length > 0 && (

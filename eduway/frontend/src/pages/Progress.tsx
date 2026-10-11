@@ -1,10 +1,10 @@
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Award, BookOpen, Bot, Check, CheckCircle2, Compass, Crown, Flag, Flame, Lock, Sparkles, Target, Trophy } from "lucide-react";
+import { Award, Timer, Zap, BookOpen, Bot, Check, CheckCircle2, Compass, Crown, Flag, Flame, Lock, Sparkles, Target, Trophy } from "lucide-react";
 import { cx, ErrorState, PageHeader, PageSkeleton, PremiumLock, Progress as Bar2 } from "../components/ui";
 import { useApi } from "../lib/hooks";
 import { fmtDate, SUBJECT_LABEL } from "../lib/format";
 
-const ICONS: Record<string, any> = { sparkles: Sparkles, compass: Compass, check: Check, trophy: Trophy, flame: Flame, crown: Crown, book: BookOpen, target: Target, bot: Bot, flag: Flag };
+const ICONS: Record<string, any> = { sparkles: Sparkles, compass: Compass, check: Check, trophy: Trophy, flame: Flame, crown: Crown, book: BookOpen, target: Target, bot: Bot, flag: Flag, timer: Timer, zap: Zap };
 
 const tip = { contentStyle: { background: "rgb(var(--surface))", border: "1px solid rgb(var(--line))", borderRadius: 12, color: "rgb(var(--ink))" }, labelStyle: { color: "rgb(var(--sub))" } };
 
@@ -21,11 +21,12 @@ export default function ProgressPage() {
     { label: "Vazifalar", value: t.tasks_done, icon: Target, c: "text-brand" },
     { label: "Darslar", value: t.lessons, icon: BookOpen, c: "text-sky-500" },
     { label: "So'zlar", value: t.words, icon: Sparkles, c: "text-fuchsia-500" },
+    { label: "Fokus", value: t.focus_minutes >= 60 ? `${Math.floor(t.focus_minutes / 60)} soat` : `${t.focus_minutes} daq`, icon: Timer, c: "text-violet-500" },
   ];
   return (
     <>
       <PageHeader title="Natijalar" subtitle={`So'nggi ${d.range_days} kun`} back="/profile" />
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
         {stats.map((s, i) => (
           <div key={s.label} className="card p-3 text-center animate-fade-up" style={{ animationDelay: `${i * 0.03}s` }}>
             <s.icon className={cx("mx-auto h-5 w-5", s.c)} />

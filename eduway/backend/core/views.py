@@ -28,7 +28,7 @@ def dashboard(request):
     from ai import service
     from career.models import CareerResult, SavedCareer
     from catalog.models import FavoriteUniversity, Grant, SavedGrant
-    from learning.models import Attempt, Mistake, StudyGoal, StudyTask, VocabWord
+    from learning.models import Attempt, DailyChallenge, Mistake, StudyGoal, StudyTask, VocabWord
 
     u = request.user
     today = timezone.localdate()
@@ -66,6 +66,8 @@ def dashboard(request):
         recs.append({"title": "Profilingizni to'ldiring", "desc": "Tavsiyalar aniqroq bo'ladi", "link": "/onboarding", "icon": "user"})
     if not last_result:
         recs.append({"title": "Kasb tanlash testini topshiring", "desc": "10 daqiqa — sizga mos yo'nalishlar", "link": "/career/test", "icon": "compass"})
+    if not u.english_level:
+        recs.append({"title": "Ingliz tili darajangizni aniqlang", "desc": "25 savol — 7 daqiqa", "link": "/english/placement", "icon": "book"})
     if not goal_data:
         recs.append({"title": "O'quv maqsadini belgilang", "desc": "Masalan: IELTS 7.0 yoki grant yutish", "link": "/plan", "icon": "target"})
     if due_words:
@@ -93,6 +95,8 @@ def dashboard(request):
         "recent_results": recent,
         "recommendations": recs[:4],
         "unread": Notification.objects.filter(user=u, read=False).count(),
+        "focus": {"today": act[today].focus_minutes if today in act else 0, "goal": u.daily_minutes},
+        "challenge_done": DailyChallenge.objects.filter(user=u, date=today).exists(),
         "ai": {"configured": service.is_configured(), "used_today": service.used_today(u), "limit": service.daily_limit(u)},
     })
 
@@ -125,3 +129,73 @@ def deadline_reminders():
             Notification.objects.create(user=s.user, title=title, body="Rasmiy saytda muddatni tasdiqlang va hujjatlarni tekshiring.", link=f"/grants/{s.grant.id}", kind="deadline")
             n += 1
     return n
+
+
+@api_view(["GET"])
+def search(request):
+    from career.models import Career
+    from catalog.models import Grant, University
+    from learning.models import Lesson, Quiz
+
+    q = request.query_params.get("q", "").strip()[:80]
+    if len(q) < 2:
+        return Response({"q": q, "results": []})
+    out = []
+    for c in Career.objects.filter(is_published=True).filter(Q(title__icontains=q) | Q(summary__icontains=q))[:5]:
+        out.append({"type": "career", "title": c.title, "subtitle": c.summary[:90], "link": f"/career/{c.slug}"})
+    for u in University.objects.filter(is_published=True).filter(Q(name__icontains=q) | Q(short_name__icontains=q) | Q(city__icontains=q) | Q(programs__name__icontains=q)).distinct()[:5]:
+        out.append({"type": "university", "title": u.name, "subtitle": f"{u.city}, {u.country}", "link": f"/universities/{u.id}"})
+    for g in Grant.objects.filter(is_published=True).filter(Q(name__icontains=q) | Q(provider__icontains=q) | Q(country__icontains=q))[:5]:
+        out.append({"type": "grant", "title": g.name, "subtitle": f"{g.provider} · {g.country}", "link": f"/grants/{g.id}"})
+    for l in Lesson.objects.filter(is_published=True).filter(Q(title__icontains=q) | Q(summary__icontains=q))[:5]:
+        out.append({"type": "lesson", "title": l.title, "subtitle": f"{l.get_skill_display()} · {l.level}", "link": f"/english/lessons/{l.id}"})
+    for z in Quiz.objects.filter(is_published=True).filter(Q(owner__isnull=True) | Q(owner=request.user)).filter(Q(title__icontains=q) | Q(topic__icontains=q))[:5]:
+        out.append({"type": "quiz", "title": z.title, "subtitle": z.get_subject_display(), "link": f"/practice/quiz/{z.id}"})
+    return Response({"q": q, "results": out})
+
+
+# --- Web Push obunasi ---
+
+@api_view(["GET"])
+def push_key(request):
+    from .push import keys
+
+    return Response({"public_key": keys()[0], "subscribed": request.user.push_subscriptions.exists(), "reminders": request.user.push_reminders})
+
+
+@api_view(["POST"])
+def push_subscribe(request):
+    from .models import PushSubscription
+    from .push import endpoint_allowed
+
+    sub = request.data.get("subscription") or {}
+    endpoint = str(sub.get("endpoint", ""))
+    k = sub.get("keys") or {}
+    if not endpoint_allowed(endpoint) or not k.get("p256dh") or not k.get("auth"):
+        return Response({"detail": "Obuna ma'lumotlari noto'g'ri."}, status=400)
+    if request.user.push_subscriptions.count() >= 10:
+        request.user.push_subscriptions.order_by("created").first().delete()
+    PushSubscription.objects.update_or_create(endpoint=endpoint, defaults={
+        "user": request.user, "p256dh": str(k["p256dh"])[:200], "auth": str(k["auth"])[:100],
+        "user_agent": request.META.get("HTTP_USER_AGENT", "")[:200], "failures": 0})
+    return Response({"subscribed": True}, status=201)
+
+
+@api_view(["POST"])
+def push_unsubscribe(request):
+    from .models import PushSubscription
+
+    PushSubscription.objects.filter(user=request.user, endpoint=str(request.data.get("endpoint", ""))).delete()
+    return Response({"subscribed": request.user.push_subscriptions.exists()})
+
+
+@api_view(["POST"])
+def push_test(request):
+    from .models import PushSubscription
+    from .push import send_to
+
+    subs = list(PushSubscription.objects.filter(user=request.user))
+    if not subs:
+        return Response({"detail": "Bu akkauntda bildirishnoma yoqilgan qurilma yo'q."}, status=400)
+    ok = sum(send_to(s, {"title": "EduWay AI", "body": "Bildirishnomalar ishlayapti ✅", "url": "/home", "tag": "test"}) for s in subs)
+    return Response({"sent": ok, "devices": len(subs)})

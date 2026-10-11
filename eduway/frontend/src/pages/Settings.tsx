@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Moon, Sun, Trash2 } from "lucide-react";
+import { BellOff, Moon, Send, Sun, Trash2 } from "lucide-react";
+import { InstallButton, PushCard } from "../components/Install";
+import { disablePush } from "../lib/pwa";
 import { cx, Field, Modal, PageHeader, Spinner } from "../components/ui";
 import { useToast } from "../components/Toast";
 import { del, get, patch, post, tokens } from "../lib/api";
@@ -52,6 +54,20 @@ export default function Settings() {
               {t === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />} {t === "light" ? "Yorug'" : "Qorong'i"}
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="card mt-4 space-y-3 p-5">
+        <h2 className="font-bold">Ilova va bildirishnomalar</h2>
+        <InstallButton className="btn-outline w-full" label="Telefonga ilova sifatida o'rnatish" />
+        <PushCard />
+        <label className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 p-3.5 text-sm">
+          <span><b>Kunlik eslatmalar</b><br /><span className="text-sub">Seriya uzilishi oldidan, challenge va grant muddatlari haqida</span></span>
+          <input type="checkbox" className="h-6 w-6 accent-[rgb(var(--brand))]" checked={!!user?.push_reminders} onChange={async (e) => { try { setUser(await patch("/auth/me/", { push_reminders: e.target.checked })); } catch (err: any) { toast(err.message, "bad"); } }} />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn-soft btn-sm" onClick={async () => { try { const r = await post("/push/test/"); toast(`Sinov xabari yuborildi (${r.sent}/${r.devices} qurilma)`); } catch (err: any) { toast(err.message, "bad"); } }}><Send className="h-4 w-4" /> Sinov xabari</button>
+          <button className="btn-outline btn-sm" onClick={async () => { await disablePush(); toast("Bu qurilmada bildirishnomalar o'chirildi", "info"); }}><BellOff className="h-4 w-4" /> O'chirish</button>
         </div>
       </section>
 

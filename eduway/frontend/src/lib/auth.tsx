@@ -5,7 +5,7 @@ export type User = {
   id: number; email: string; first_name: string; last_name: string; full_name: string;
   education_stage: string; grade: number | null; region: string; interests: string[]; favorite_subjects: string[];
   future_goals: string; target_countries: string[]; english_level: string; ielts_score: string | null; birth_year: number | null;
-  daily_minutes: number; onboarded: boolean; plan: "free" | "premium"; is_premium: boolean; premium_until: string | null;
+  daily_minutes: number; onboarded: boolean; push_reminders: boolean; plan: "free" | "premium"; is_premium: boolean; premium_until: string | null;
   xp: number; streak: number; best_streak: number; is_admin: boolean; date_joined: string;
 };
 

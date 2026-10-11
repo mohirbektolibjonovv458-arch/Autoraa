@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Bot, Building2, CalendarClock, CheckCircle2, Circle, Compass, Flame, GraduationCap, Mic, RefreshCw, Sparkles, Target, Trophy, User as UserIcon } from "lucide-react";
+import { Timer, Zap, ArrowRight, BookOpen, Bot, Building2, CalendarClock, CheckCircle2, Circle, Compass, Flame, GraduationCap, Mic, RefreshCw, Sparkles, Target, Trophy, User as UserIcon } from "lucide-react";
 import { Badge, cx, ErrorState, PageSkeleton, Progress, Ring } from "../components/ui";
 import { useToast } from "../components/Toast";
 import { patch } from "../lib/api";
 import { useApi } from "../lib/hooks";
+import { InstallBanner, PushCard } from "../components/Install";
 import { fmtDate, greeting, SUBJECT_LABEL, WEEKDAYS } from "../lib/format";
 
 const REC_ICONS: Record<string, any> = { user: UserIcon, compass: Compass, target: Target, book: BookOpen, refresh: RefreshCw, building: Building2 };
@@ -65,6 +66,27 @@ export default function Home() {
           <span className="text-white/80">Bugun: +{d.today.xp} XP</span>
         </div>
       </section>
+
+      {/* Kunlik challenge va fokus */}
+      <section className="grid grid-cols-2 gap-3 animate-fade-up [animation-delay:.03s]">
+        <Link to="/challenge" className={cx("relative overflow-hidden rounded-3xl p-4 text-white shadow-lift transition hover:-translate-y-0.5", d.challenge_done ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-amber-400 via-rose-500 to-fuchsia-600")}>
+          <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20 blur-xl" />
+          <Zap className="h-7 w-7" />
+          <p className="mt-3 text-lg font-extrabold leading-tight">{d.challenge_done ? "Challenge bajarildi" : "Kunlik challenge"}</p>
+          <p className="mt-0.5 text-xs text-white/85">{d.challenge_done ? "Ertaga yangi savollar ✨" : "5 savol · bonus XP"}</p>
+        </Link>
+        <Link to="/focus" className="card relative overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-lift">
+          <div className="flex items-center justify-between">
+            <Timer className="h-7 w-7 text-brand" />
+            <Ring value={(100 * d.focus.today) / Math.max(1, d.focus.goal)} size={44} stroke={5}><span className="text-[10px] font-bold">{Math.min(100, Math.round((100 * d.focus.today) / Math.max(1, d.focus.goal)))}%</span></Ring>
+          </div>
+          <p className="mt-3 text-lg font-extrabold leading-tight">Fokus</p>
+          <p className="mt-0.5 text-xs text-sub">{d.focus.today} / {d.focus.goal} daqiqa bugun</p>
+        </Link>
+      </section>
+
+      <InstallBanner />
+      <PushCard compact />
 
       {/* AI tezkor kirish */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-[1.4fr_1fr] animate-fade-up [animation-delay:.05s]">
