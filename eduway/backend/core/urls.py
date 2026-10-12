@@ -20,6 +20,8 @@ admin_urls = [
     path("premium-requests/<int:pk>/review/", a.premium_review),
     path("users/<int:pk>/premium/", a.grant_premium),
     path("flagged/", a.flagged_messages),
+    path("speak-reports/", a.speak_reports),
+    path("speak-reports/<int:pk>/review/", a.speak_review),
     path("flagged/<int:pk>/review/", a.flagged_review),
     path("", include(router.urls)),
 ]

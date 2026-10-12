@@ -112,7 +112,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "email", "phone", "first_name", "last_name", "education_stage", "grade", "is_active", "is_staff", "premium_until",
-                  "plan", "xp", "streak", "date_joined", "last_login", "onboarded"]
+                  "plan", "xp", "streak", "date_joined", "last_login", "onboarded", "birth_year"]
         read_only_fields = ["id", "email", "phone", "xp", "streak", "date_joined", "last_login", "onboarded", "education_stage", "grade"]
 
 
@@ -142,6 +142,12 @@ class UserAdmin(AdminViewSet):
         if "is_staff" in serializer.validated_data and serializer.validated_data["is_staff"] != target.is_staff and not me.is_superuser:
             raise serializers.ValidationError({"detail": "Admin rolini faqat bosh administrator (superuser) o'zgartira oladi."})
         serializer.save()
+
+
+def _speak_open():
+    from speaking.models import SpeakReport
+
+    return SpeakReport.objects.filter(reviewed=False).count()
 
 
 def _tg_status():
@@ -180,7 +186,7 @@ def overview(request):
                "limits": {"free": settings.AI_DAILY_LIMIT_FREE, "premium": settings.AI_DAILY_LIMIT_PREMIUM}},
         "billing": {"pending": PremiumRequest.objects.filter(status="pending").count(),
                     "payment_configured": bool(settings.PREMIUM_PAYMENT_INSTRUCTIONS), "price_uzs": settings.PREMIUM_PRICE_UZS},
-        "moderation": {"flagged_ai": Message.objects.filter(feedback="bad", reviewed=False).count()},
+        "moderation": {"flagged_ai": Message.objects.filter(feedback="bad", reviewed=False).count(), "speak_reports": _speak_open()},
         "health": {"telegram": _tg_status(), "db": db_ok, "debug": settings.DEBUG, "server_errors_24h": ErrorLog.objects.filter(source="server", created__gte=now - timedelta(hours=24)).count()},
     })
 
@@ -261,6 +267,47 @@ def flagged_messages(request):
         out.append({"id": m.id, "mode": m.conversation.mode, "user": str(m.conversation.user), "question": q.content if q else "",
                     "answer": m.content, "note": m.feedback_note, "reviewed": m.reviewed, "created": m.created})
     return Response(out)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def speak_reports(request):
+    from speaking.models import SpeakProfile, SpeakReport
+
+    qs = SpeakReport.objects.select_related("reporter", "reported")
+    if request.query_params.get("all") != "1":
+        qs = qs.filter(reviewed=False)
+    suspended = set(SpeakProfile.objects.filter(suspended=True).values_list("user_id", flat=True))
+    reasons = dict(SpeakReport.REASONS)
+    return Response([{"id": r.id, "reason": reasons.get(r.reason, r.reason), "note": r.note, "reviewed": r.reviewed, "created": r.created,
+                      "reporter": {"id": r.reporter_id, "name": r.reporter.full_name, "contact": r.reporter.phone or r.reporter.email},
+                      "reported": {"id": r.reported_id, "name": r.reported.full_name, "contact": r.reported.phone or r.reported.email,
+                                   "suspended": r.reported_id in suspended,
+                                   "reports": SpeakReport.objects.filter(reported_id=r.reported_id).count()}} for r in qs[:200]])
+
+
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def speak_review(request, pk):
+    """action: dismiss (ko'rib chiqildi) | suspend (speaking'ni yopish) | unsuspend (qayta ochish)."""
+    from speaking.models import SpeakProfile, SpeakReport
+
+    r = get_object_or_404(SpeakReport, pk=pk)
+    action = request.data.get("action")
+    if action not in ("dismiss", "suspend", "unsuspend"):
+        return Response({"detail": "action: dismiss, suspend yoki unsuspend"}, status=400)
+    p, _ = SpeakProfile.objects.get_or_create(user_id=r.reported_id)
+    if action == "suspend":
+        p.suspended, p.suspended_reason = True, f"Administrator qarori ({request.user})"
+        p.save()
+    elif action == "unsuspend":
+        p.suspended, p.suspended_reason = False, ""
+        p.save()
+    if action == "dismiss":
+        SpeakReport.objects.filter(pk=pk).update(reviewed=True)
+    else:
+        SpeakReport.objects.filter(reported_id=r.reported_id, reviewed=False).update(reviewed=True)
+    return Response({"ok": True, "suspended": p.suspended})
 
 
 @api_view(["POST"])

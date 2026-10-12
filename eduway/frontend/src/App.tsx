@@ -41,6 +41,7 @@ const Admin = lazy(() => import("./pages/admin/Admin"));
 const Focus = lazy(() => import("./pages/Focus"));
 const Challenge = lazy(() => import("./pages/Challenge"));
 const Placement = lazy(() => import("./pages/english/Placement"));
+const Partner = lazy(() => import("./pages/english/Partner"));
 const About = lazy(() => import("./pages/About"));
 
 function Protected({ children, admin }: { children: ReactNode; admin?: boolean }) {
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="/grants/saved" element={page(<SavedGrants />)} />
         <Route path="/grants/:id" element={page(<GrantDetail />)} />
         <Route path="/english" element={page(<English />)} />
+        <Route path="/english/partner" element={page(<Partner />)} />
         <Route path="/english/lessons" element={page(<Lessons />)} />
         <Route path="/english/lessons/:id" element={page(<LessonPage />)} />
         <Route path="/english/vocab" element={page(<Vocab />)} />

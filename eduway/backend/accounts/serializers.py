@@ -92,6 +92,9 @@ class ProfileSerializer(serializers.ModelSerializer):
     def validate_birth_year(self, v):
         if v is not None and not 1950 <= v <= 2022:
             raise serializers.ValidationError("Tug'ilgan yil noto'g'ri.")
+        # Yosh guruhi (Speaking partner) shunga bog'liq — bir marta kiritilgach, faqat administrator o'zgartiradi
+        if self.instance is not None and self.instance.birth_year and v != self.instance.birth_year:
+            raise serializers.ValidationError("Tug'ilgan yil bir marta kiritiladi. O'zgartirish uchun administratorga murojaat qiling.")
         return v
 
     def validate_daily_minutes(self, v):

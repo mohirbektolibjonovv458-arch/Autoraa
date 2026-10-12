@@ -22,6 +22,7 @@ O‘quvchilar uchun ta’lim platformasi. EduWay (kasb, universitet, grantlar) v
 | Telegram bildirishnomalar va bot buyruqlari (/stats, /challenge, /word, /notify, /help) | ⚙️ | `TELEGRAM_BOT_TOKEN` kerak; Sozlamalarda o‘chirish mumkin |
 | Haftalik hisobot (yakshanba 18:00 + Natijalar sahifasida) | ✅ | Joriy va o‘tgan hafta solishtiriladi |
 | Kun so‘zi (talaffuz + lug‘atga qo‘shish) | ✅ | 56 ta akademik so‘z, har kuni almashadi |
+| Speaking partner — foydalanuvchilar o‘rtasida jonli ovozli suhbat (WebRTC) | ✅ / ⚙️ | 16+; 18 yoshgacha faqat tengdoshlar bilan; qoidalarga rozilik, shikoyat, bloklash, 3 shikoyatda avtomatik to‘xtatish, admin moderatsiya. Ovoz yozib olinmaydi. Bepul STUN bilan ko‘p tarmoqlarda ishlaydi; ba’zi mobil tarmoqlar uchun `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` (pullik TURN xizmati) tavsiya etiladi. Tug‘ilgan yil bir marta kiritiladi, keyin faqat admin o‘zgartiradi |
 | Administrator kirishi (`/admin-login`) | ✅ | Email + parol (`python manage.py create_admin`) |
 | Chiqish, akkauntni o‘chirish | ✅ | JWT (access + refresh, rotatsiya, blacklist). Kirish so‘rovlari cheklangan (10/daqiqa) |
 | Animatsiyali boshlang‘ich ekran, tanishtiruv, onboarding | ✅ | |
@@ -111,6 +112,7 @@ Kalit brauzerga yuborilmaydi va repozitoriyga yozilmaydi (`.env` fayli `.gitigno
    - `DEBUG` = `0`
    - `ANTHROPIC_API_KEY` = kalitingiz (AI uchun)
    - `TELEGRAM_BOT_TOKEN` = @BotFather bergan bot tokeni (telefon orqali kirish uchun). Railway'da bot **webhook** rejimida ishlaydi — domen avtomatik aniqlanadi
+   - (ixtiyoriy) `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` — Speaking partner ovozli suhbatlari qat’iy NAT ortidagi mobil tarmoqlarda ham ulanishi uchun (masalan, metered.ca yoki Twilio TURN). `TURN_URL` bir nechta bo‘lsa vergul bilan
    - ixtiyoriy: `AI_MODEL`, `AI_DAILY_LIMIT_FREE`, `AI_DAILY_LIMIT_PREMIUM`, `PREMIUM_PRICE_UZS`, `PREMIUM_PAYMENT_INSTRUCTIONS`
    - `SECRET_KEY` = kamida 50 belgili tasodifiy satr (berilmasa, har deployda yangisi yaratiladi va foydalanuvchilar qayta kirishi kerak bo'ladi)
 5. **Settings → Networking → Generate Domain.** Domen `ALLOWED_HOSTS`ga avtomatik qo'shiladi (`RAILWAY_PUBLIC_DOMAIN`), HTTPS sozlamalari ham avtomatik yoqiladi.

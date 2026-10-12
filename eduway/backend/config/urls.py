@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/learn/", include("learning.urls")),
     path("api/ai/", include("ai.urls")),
     path("api/billing/", include("billing.urls")),
+    path("api/speak/", include("speaking.urls")),
     path("api/", include("catalog.urls")),
     path("api/", include("core.urls")),
     re_path(r"^api/", api_404),

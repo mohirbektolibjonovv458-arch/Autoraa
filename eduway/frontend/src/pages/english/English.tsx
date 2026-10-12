@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Brain, CheckCircle2, Headphones, Lock, Mic, PenLine, Sparkles, SpellCheck, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, CheckCircle2, Headphones, Lock, Mic, PenLine, Sparkles, SpellCheck, Trophy, Users } from "lucide-react";
 import { Badge, ErrorState, PageHeader, PageSkeleton, Progress } from "../../components/ui";
 import { useApi } from "../../lib/hooks";
 
@@ -70,6 +70,7 @@ export default function English() {
       <section className="mt-5 grid gap-3 sm:grid-cols-3">
         <Link to="/english/writing" className="card p-5 hover:shadow-lift"><PenLine className="h-6 w-6 text-amber-500" /><p className="mt-3 font-bold">IELTS Writing tekshiruvi</p><p className="text-sm text-sub">AI taxminiy ball va xatolar tahlili</p></Link>
         <Link to="/ai?mode=speaking" className="card p-5 hover:shadow-lift"><Mic className="h-6 w-6 text-rose-500" /><p className="mt-3 font-bold">Speaking mashqi</p><p className="text-sm text-sub">AI bilan ovozli suhbat</p></Link>
+        <Link to="/english/partner" className="card relative overflow-hidden p-5 hover:shadow-lift"><span className="absolute right-3 top-3 rounded-full bg-ok/15 px-2 py-0.5 text-[10px] font-bold text-ok">YANGI</span><Users className="h-6 w-6 text-sky-500" /><p className="mt-3 font-bold">Speaking partner</p><p className="text-sm text-sub">Boshqa o'quvchi bilan jonli suhbat (16+)</p></Link>
         <Link to="/practice?subject=english,ielts" className="card p-5 hover:shadow-lift"><CheckCircle2 className="h-6 w-6 text-ok" /><p className="mt-3 font-bold">Testlar</p><p className="text-sm text-sub">Grammar, vocabulary, IELTS Reading</p></Link>
       </section>
 

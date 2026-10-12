@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Brain, GraduationCap, LineChart, Mic, PenLine, RefreshCw, Sparkles, Target, Timer, Zap } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, GraduationCap, LineChart, Mic, PenLine, RefreshCw, Sparkles, Target, Timer, Zap, Users } from "lucide-react";
 import { PageHeader } from "../components/ui";
 
 const GROUPS = [
@@ -18,6 +18,7 @@ const GROUPS = [
     { to: "/english/vocab/review", icon: Brain, title: "So'zlarni takrorlash", text: "Intervalli takrorlash — so'zlar unutilmaydi", color: "from-emerald-500 to-teal-600" },
     { to: "/english/writing", icon: PenLine, title: "IELTS Writing", text: "Esse yozing va AI tahlilini oling", color: "from-amber-500 to-orange-600" },
     { to: "/ai?mode=speaking", icon: Mic, title: "Speaking mashqi", text: "AI bilan ovozli suhbat", color: "from-pink-500 to-rose-600" },
+    { to: "/english/partner", icon: Users, title: "Speaking partner", text: "Jonli suhbat sherigi (16+)", color: "from-sky-500 to-indigo-600" },
   ] },
   { title: "Natijalar", desc: "Rivojlanishingizni kuzating", items: [
     { to: "/progress", icon: LineChart, title: "Natijalar va yutuqlar", text: "Grafiklar, zaif mavzular, badge'lar", color: "from-blue-500 to-indigo-700" },

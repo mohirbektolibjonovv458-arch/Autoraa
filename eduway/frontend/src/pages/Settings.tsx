@@ -87,7 +87,7 @@ export default function Settings() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Hudud"><input className="input" value={f.region} maxLength={80} onChange={set("region")} /></Field>
-          <Field label="Tug'ilgan yil"><input type="number" min={1950} max={2022} className="input" value={f.birth_year} onChange={set("birth_year")} /></Field>
+          <Field label="Tug'ilgan yil" hint={user?.birth_year ? "O'zgartirish uchun administratorga murojaat qiling" : "Bir marta kiritiladi"}><input type="number" min={1950} max={2022} className="input disabled:opacity-60" value={f.birth_year} disabled={!!user?.birth_year} onChange={set("birth_year")} /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Ingliz tili darajasi"><select className="input" value={f.english_level} onChange={set("english_level")}><option value="">Noma'lum</option>{LEVELS.map((l) => <option key={l.v} value={l.v}>{l.t}</option>)}</select></Field>

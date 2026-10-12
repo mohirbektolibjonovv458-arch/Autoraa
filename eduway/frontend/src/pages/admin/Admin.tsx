@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { Activity, AlertTriangle, ArrowLeft, Bot, BookOpen, Briefcase, CheckCircle2, ClipboardList, Crown, GraduationCap, LayoutDashboard, ShieldAlert, Trophy, Users, XCircle } from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeft, Bot, BookOpen, Briefcase, CheckCircle2, ClipboardList, Crown, GraduationCap, LayoutDashboard, ShieldAlert, Trophy, Users, XCircle, Mic } from "lucide-react";
 import { Badge, cx, ErrorState, PageSkeleton, Spinner } from "../../components/ui";
 import { Logo } from "../../components/Logo";
 import { useToast } from "../../components/Toast";
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/admin/quizzes", label: "Testlar", icon: ClipboardList },
   { to: "/admin/lessons", label: "Darslar", icon: BookOpen },
   { to: "/admin/moderation", label: "AI moderatsiya", icon: ShieldAlert },
+  { to: "/admin/speaking", label: "Speaking shikoyatlari", icon: Mic },
   { to: "/admin/errors", label: "Xatolar jurnali", icon: Activity },
 ];
 
@@ -84,6 +85,7 @@ function Overview() {
         </div>
         {(d.content.universities_unverified > 0 || d.content.grants_unverified > 0) && <p className="mt-3 flex gap-2 text-sm text-warn"><AlertTriangle className="h-4 w-4 shrink-0" /> Tekshirilmagan yozuvlarda narx, muddat va talablarni rasmiy manbadan tekshirib, «Tasdiqlangan» deb belgilang.</p>}
       </section>
+      {d.moderation.speak_reports > 0 && <Link to="/admin/speaking" className="card flex items-center gap-3 border-bad/40 p-4"><Mic className="h-5 w-5 text-bad" /> {d.moderation.speak_reports} ta ko'rib chiqilmagan Speaking shikoyati</Link>}
       {d.moderation.flagged_ai > 0 && <Link to="/admin/moderation" className="card flex items-center gap-3 border-warn/40 p-4"><ShieldAlert className="h-5 w-5 text-warn" /> {d.moderation.flagged_ai} ta AI javobi foydalanuvchilar tomonidan belgilangan</Link>}
     </div>
   );
@@ -108,12 +110,18 @@ function UsersPage() {
           { label: "Rol", render: (u) => (u.is_staff ? <Badge>Admin</Badge> : "—") },
           { label: "Holat", render: (u) => (u.is_active ? <Badge tone="ok">Faol</Badge> : <Badge tone="bad">Bloklangan</Badge>) },
           { label: "XP", render: (u) => u.xp },
+          { label: "Tug'ilgan yil", render: (u) => u.birth_year || "—" },
           { label: "Ro'yxatdan", render: (u) => fmtDate(u.date_joined, false) },
         ]}
         extra={(u, reload) => (
           <span className="mr-1 inline-flex gap-1">
             <button className="btn-soft btn-sm h-8" onClick={() => setPremium(u, 30, reload)}>+30 kun</button>
             {u.plan === "premium" && <button className="btn-outline btn-sm h-8" onClick={() => setPremium(u, 0, reload)}>Premiumni olish</button>}
+            <button className="btn-outline btn-sm h-8" onClick={async () => {
+              const y = prompt("Tug'ilgan yil (hujjat bo'yicha tekshirilgandan keyin o'zgartiring):", u.birth_year || "");
+              if (y === null) return;
+              try { await api(`/admin/users/${u.id}/`, { method: "PATCH", body: { birth_year: y ? +y : null } }); toast("Saqlandi"); reload(); } catch (e: any) { toast(e.message, "bad"); }
+            }}>Yil</button>
             <button className="btn-outline btn-sm h-8" onClick={() => toggleActive(u, reload)}>{u.is_active ? "Bloklash" : "Faollashtirish"}</button>
           </span>
         )}
@@ -283,6 +291,38 @@ function Moderation() {
   );
 }
 
+function SpeakReports() {
+  const [all, setAll] = useState(false);
+  const toast = useToast();
+  const { data, error, loading, reload } = useApi<any[]>(`/admin/speak-reports/${all ? "?all=1" : ""}`);
+  const act = async (r: any, action: string) => {
+    try { await post(`/admin/speak-reports/${r.id}/review/`, { action }); toast(action === "suspend" ? "Speaking yopildi" : action === "unsuspend" ? "Qayta ochildi" : "Ko'rib chiqildi"); reload(); }
+    catch (e: any) { toast(e.message, "bad"); }
+  };
+  return (
+    <div>
+      <h1 className="mb-1 text-2xl font-extrabold">Speaking shikoyatlari</h1>
+      <p className="mb-4 text-sm text-sub">Jonli suhbatlardagi shikoyatlar. Suhbatlar yozib olinmaydi — qaror shikoyatlar soni va izohlar asosida qabul qilinadi. 30 kunda 3 xil foydalanuvchidan shikoyat olgan akkaunt avtomatik to'xtatiladi.</p>
+      <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Ko'rib chiqilganlarni ham ko'rsatish</label>
+      {loading ? <PageSkeleton /> : error ? <ErrorState error={error} /> : !data?.length ? <p className="text-sub">Shikoyatlar yo'q.</p> : (
+        <div className="space-y-3">{data.map((r) => (
+          <div key={r.id} className="card p-4 text-sm">
+            <div className="flex flex-wrap items-center gap-2"><Badge tone="bad">{r.reason}</Badge><span className="text-xs text-sub">{timeAgo(r.created)}</span>{r.reviewed && <Badge tone="ok">Ko'rib chiqilgan</Badge>}</div>
+            <p className="mt-2"><b>Kimga:</b> {r.reported.name} ({r.reported.contact}) · jami shikoyat: {r.reported.reports} {r.reported.suspended && <Badge tone="bad">To'xtatilgan</Badge>}</p>
+            <p className="text-sub"><b>Kimdan:</b> {r.reporter.name} ({r.reporter.contact})</p>
+            {r.note && <p className="mt-2 rounded-xl bg-muted p-3">{r.note}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {!r.reviewed && <button className="btn-soft btn-sm h-8" onClick={() => act(r, "dismiss")}>Asossiz — yopish</button>}
+              {r.reported.suspended ? <button className="btn-outline btn-sm h-8" onClick={() => act(r, "unsuspend")}>Qayta ochish</button>
+                : <button className="btn-sm h-8 rounded-xl bg-bad px-3 font-semibold text-white" onClick={() => act(r, "suspend")}>Speaking'ni yopish</button>}
+            </div>
+          </div>
+        ))}</div>
+      )}
+    </div>
+  );
+}
+
 function Errors() {
   const { data, error, loading, reload } = useApi<any[]>("/admin/errors/");
   return (
@@ -329,6 +369,7 @@ export default function Admin() {
           <Route path="lessons" element={<Crud title="Darslar" endpoint="/admin/lessons/" fields={LESSON_FIELDS}
             columns={[{ label: "Nomi", render: (l) => <b>{l.title}</b> }, { label: "Ko'nikma", render: (l) => l.skill }, { label: "Daraja", render: (l) => l.level }, { label: "Premium", render: (l) => yes(l.is_premium) }, { label: "Ko'rinadi", render: (l) => yes(l.is_published) }]} />} />
           <Route path="moderation" element={<Moderation />} />
+          <Route path="speaking" element={<SpeakReports />} />
           <Route path="errors" element={<Errors />} />
         </Routes>
       </main>

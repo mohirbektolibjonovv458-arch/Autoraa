@@ -1,11 +1,11 @@
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Award, Timer, Zap, BookOpen, Bot, Check, CheckCircle2, Compass, Crown, Flag, Flame, Lock, Sparkles, Target, Trophy } from "lucide-react";
+import { Award, Mic, Timer, Zap, BookOpen, Bot, Check, CheckCircle2, Compass, Crown, Flag, Flame, Lock, Sparkles, Target, Trophy } from "lucide-react";
 import { cx, ErrorState, PageHeader, PageSkeleton, PremiumLock, Progress as Bar2 } from "../components/ui";
 import { useApi } from "../lib/hooks";
 import { fmtDate, SUBJECT_LABEL } from "../lib/format";
 import { WeeklyReport } from "../components/Weekly";
 
-const ICONS: Record<string, any> = { sparkles: Sparkles, compass: Compass, check: Check, trophy: Trophy, flame: Flame, crown: Crown, book: BookOpen, target: Target, bot: Bot, flag: Flag, timer: Timer, zap: Zap };
+const ICONS: Record<string, any> = { sparkles: Sparkles, compass: Compass, check: Check, trophy: Trophy, flame: Flame, crown: Crown, book: BookOpen, target: Target, bot: Bot, flag: Flag, timer: Timer, zap: Zap, mic: Mic };
 
 const tip = { contentStyle: { background: "rgb(var(--surface))", border: "1px solid rgb(var(--line))", borderRadius: 12, color: "rgb(var(--ink))" }, labelStyle: { color: "rgb(var(--sub))" } };
 

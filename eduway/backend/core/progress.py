@@ -25,6 +25,8 @@ ACHIEVEMENTS = {
     "challenge_1": {"title": "Kun savollari", "desc": "Birinchi kunlik challenge", "icon": "zap"},
     "challenge_7": {"title": "Challenge haftasi", "desc": "7 ta kunlik challenge bajarildi", "icon": "zap"},
     "english_placed": {"title": "Darajam aniq", "desc": "Ingliz tili darajasini aniqlash testi", "icon": "book"},
+    "speak_1": {"title": "Birinchi suhbat", "desc": "Speaking partner bilan birinchi suhbat", "icon": "mic"},
+    "speak_10": {"title": "Suhbatdosh", "desc": "10 ta jonli speaking suhbati", "icon": "mic"},
 }
 
 XP = {"task": 10, "quiz": 20, "lesson": 15, "word": 2, "ai": 1, "career_test": 30}
