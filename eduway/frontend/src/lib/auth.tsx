@@ -7,6 +7,7 @@ export type User = {
   future_goals: string; target_countries: string[]; english_level: string; ielts_score: string | null; birth_year: number | null;
   daily_minutes: number; onboarded: boolean; push_reminders: boolean; plan: "free" | "premium"; is_premium: boolean; premium_until: string | null;
   xp: number; streak: number; best_streak: number; is_admin: boolean; date_joined: string;
+  telegram_notify: boolean; has_telegram: boolean; level: import("../components/Level").Level;
 };
 
 type Ctx = {

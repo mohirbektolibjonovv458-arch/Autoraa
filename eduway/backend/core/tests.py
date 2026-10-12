@@ -485,3 +485,64 @@ class PhoneLoginTests(TestCase):
     def test_not_configured(self):
         with mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}):
             self.assertEqual(self.c.post("/api/auth/phone/start/", {"phone": "901234567"}, format="json").status_code, 503)
+
+
+class GrowthFeatureTests(PhoneLoginTests):
+    """Daraja, haftalik hisobot, kun so'zi, Telegram bildirishnomalari va bot buyruqlari."""
+
+    def make_user(self):
+        u = User.objects.create_user(phone="+998901112233", first_name="Vali")
+        u.telegram_chat_id = 777
+        u.save()
+        self.c.credentials(HTTP_AUTHORIZATION="Bearer " + tokens_for(u)["access"])
+        return u
+
+    def test_levels(self):
+        from core.levels import level_for
+        self.assertEqual(level_for(0)["level"], 1)
+        self.assertEqual(level_for(99)["to_next"], 1)
+        self.assertEqual(level_for(100)["title"], "Izlanuvchi")
+        self.assertEqual(level_for(10**6)["progress"], 100)
+
+    def test_level_up_notifies_and_sends_telegram(self):
+        from core.models import Notification
+        from core.progress import record
+        u = self.make_user()
+        with mock.patch("threading.Thread") as th:
+            with self.captureOnCommitCallbacks(execute=True) as _cbs:
+                record(u, "quiz", xp=150)
+        n = Notification.objects.filter(user=u, title__contains="Yangi daraja").first()
+        self.assertIsNotNone(n)
+        self.assertTrue(any(c.kwargs.get("args", (None,))[0] == 777 for c in th.call_args_list))
+
+    def test_telegram_notify_off(self):
+        from core.signals import notify_telegram
+        from core.models import Notification
+        u = self.make_user()
+        u.telegram_notify = False
+        u.save()
+        with mock.patch("threading.Thread") as th:
+            notify_telegram(Notification(user=u, title="t", body="b", link="/"))
+        th.assert_not_called()
+
+    def test_dashboard_weekly_word(self):
+        self.make_user()
+        d = self.c.get("/api/dashboard/").json()
+        self.assertIn("level", d)
+        self.assertIn("word", d["word"])
+        self.assertFalse(d["word"]["saved"])
+        w = self.c.get("/api/weekly/").json()
+        self.assertIn("current", w)
+        self.assertEqual(w["current"]["xp"], 0)
+
+    def test_bot_commands(self):
+        u = self.make_user()
+        self.webhook({"chat": {"id": 777, "type": "private"}, "from": {"id": 777}, "text": "/stats"})
+        self.assertIn("XP", self.sent[-1]["text"])
+        self.webhook({"chat": {"id": 777, "type": "private"}, "from": {"id": 777}, "text": "/notify"})
+        u.refresh_from_db()
+        self.assertFalse(u.telegram_notify)
+        self.webhook({"chat": {"id": 555, "type": "private"}, "from": {"id": 555}, "text": "/stats"})
+        self.assertIn("ulanmagan", self.sent[-1]["text"])
+        self.webhook({"chat": {"id": 555, "type": "private"}, "from": {"id": 555}, "text": "/word"})
+        self.assertIn("Kun so'zi", self.sent[-1]["text"])

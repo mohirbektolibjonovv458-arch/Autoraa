@@ -65,6 +65,10 @@ export default function Settings() {
           <span><b>Kunlik eslatmalar</b><br /><span className="text-sub">Seriya uzilishi oldidan, challenge va grant muddatlari haqida</span></span>
           <input type="checkbox" className="h-6 w-6 accent-[rgb(var(--brand))]" checked={!!user?.push_reminders} onChange={async (e) => { try { setUser(await patch("/auth/me/", { push_reminders: e.target.checked })); } catch (err: any) { toast(err.message, "bad"); } }} />
         </label>
+        <label className={cx("flex items-center justify-between gap-3 rounded-2xl bg-muted/60 p-3.5 text-sm", !user?.has_telegram && "opacity-60")}>
+          <span><b>Telegram orqali ham</b><br /><span className="text-sub">{user?.has_telegram ? "Bildirishnomalar EduWay botiga ham keladi. Botda /stats, /challenge, /word buyruqlari bor." : "Telegram bot orqali kirganingizda ulanadi."}</span></span>
+          <input type="checkbox" disabled={!user?.has_telegram} className="h-6 w-6 accent-[rgb(var(--brand))]" checked={!!user?.has_telegram && !!user?.telegram_notify} onChange={async (e) => { try { setUser(await patch("/auth/me/", { telegram_notify: e.target.checked })); } catch (err: any) { toast(err.message, "bad"); } }} />
+        </label>
         <div className="grid grid-cols-2 gap-2">
           <button className="btn-soft btn-sm" onClick={async () => { try { const r = await post("/push/test/"); toast(`Sinov xabari yuborildi (${r.sent}/${r.devices} qurilma)`); } catch (err: any) { toast(err.message, "bad"); } }}><Send className="h-4 w-4" /> Sinov xabari</button>
           <button className="btn-outline btn-sm" onClick={async () => { await disablePush(); toast("Bu qurilmada bildirishnomalar o'chirildi", "info"); }}><BellOff className="h-4 w-4" /> O'chirish</button>

@@ -18,6 +18,10 @@ O‘quvchilar uchun ta’lim platformasi. EduWay (kasb, universitet, grantlar) v
 | Modul | Holat | Izoh |
 |---|---|---|
 | Kirish / ro‘yxatdan o‘tish: telefon raqam + Telegram bot kodi | ⚙️ | `TELEGRAM_BOT_TOKEN` kerak. Raqam → bot (Start + «Raqamni ulashish») → 4 xonali kod → kirish; yangi raqam bo‘lsa akkaunt avtomatik ochiladi. Botga o‘tib qaytganda holat saqlanadi. Kod 5 daqiqa amal qiladi, 5 ta urinish, xeshlangan holda saqlanadi |
+| Darajalar (11 ta: «Yangi boshlovchi» → «Afsona»), daraja oshganda bildirishnoma | ✅ | XP asosida, Bosh sahifa va Profilda |
+| Telegram bildirishnomalar va bot buyruqlari (/stats, /challenge, /word, /notify, /help) | ⚙️ | `TELEGRAM_BOT_TOKEN` kerak; Sozlamalarda o‘chirish mumkin |
+| Haftalik hisobot (yakshanba 18:00 + Natijalar sahifasida) | ✅ | Joriy va o‘tgan hafta solishtiriladi |
+| Kun so‘zi (talaffuz + lug‘atga qo‘shish) | ✅ | 56 ta akademik so‘z, har kuni almashadi |
 | Administrator kirishi (`/admin-login`) | ✅ | Email + parol (`python manage.py create_admin`) |
 | Chiqish, akkauntni o‘chirish | ✅ | JWT (access + refresh, rotatsiya, blacklist). Kirish so‘rovlari cheklangan (10/daqiqa) |
 | Animatsiyali boshlang‘ich ekran, tanishtiruv, onboarding | ✅ | |

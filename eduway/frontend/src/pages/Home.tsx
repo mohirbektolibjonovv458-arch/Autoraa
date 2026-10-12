@@ -6,6 +6,7 @@ import { patch } from "../lib/api";
 import { useApi } from "../lib/hooks";
 import { InstallBanner, PushCard } from "../components/Install";
 import { StartPath } from "../components/StartPath";
+import { LevelBar, WordOfDay } from "../components/Level";
 import { fmtDate, greeting, SUBJECT_LABEL, WEEKDAYS } from "../lib/format";
 
 const REC_ICONS: Record<string, any> = { user: UserIcon, compass: Compass, target: Target, book: BookOpen, refresh: RefreshCw, building: Building2 };
@@ -35,7 +36,9 @@ export default function Home() {
     <div className="space-y-5">
       {/* Salomlashuv */}
       <section className="relative overflow-hidden rounded-3xl gradient-hero p-5 text-white shadow-lift sm:p-7 animate-fade-up">
-        <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-fuchsia-400/30 blur-2xl" />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-fuchsia-400/30 blur-2xl animate-float" />
+        <div className="pointer-events-none absolute -bottom-16 -left-10 h-44 w-44 rounded-full bg-sky-300/25 blur-2xl animate-float [animation-delay:-3s]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[.07] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="relative flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-white/70">{greeting()},</p>
@@ -62,10 +65,8 @@ export default function Home() {
             );
           })}
         </div>
-        <div className="relative mt-4 flex items-center justify-between text-sm">
-          <span className="text-white/80"><Trophy className="mr-1 inline h-4 w-4" /> {d.xp} XP</span>
-          <span className="text-white/80">Bugun: +{d.today.xp} XP</span>
-        </div>
+        <div className="relative mt-4"><LevelBar lv={d.level} light /></div>
+        <p className="relative mt-2 text-right text-xs text-white/75">Bugun: <b className="text-white">+{d.today.xp} XP</b></p>
       </section>
 
       <StartPath d={d} />
@@ -88,6 +89,8 @@ export default function Home() {
           <p className="mt-0.5 text-xs text-sub">{d.focus.today} / {d.focus.goal} daqiqa bugun</p>
         </Link>
       </section>
+
+      {d.word && <WordOfDay w={d.word} />}
 
       <InstallBanner />
       <PushCard compact />

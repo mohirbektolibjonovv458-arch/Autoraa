@@ -31,6 +31,12 @@ API = os.getenv("TELEGRAM_API_BASE", "https://api.telegram.org").rstrip("/")
 
 CONTACT_KB = {"keyboard": [[{"text": "📱 Raqamni ulashish", "request_contact": True}]], "resize_keyboard": True, "one_time_keyboard": True}
 REMOVE_KB = {"remove_keyboard": True}
+COMMANDS = [("stats", "Mening statistikam"), ("challenge", "Bugungi challenge"), ("word", "Kun so'zi"),
+            ("notify", "Bildirishnomalarni yoqish/o'chirish"), ("help", "Yordam")]
+
+
+def esc(s):
+    return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def token():
@@ -160,11 +166,55 @@ def handle_update(upd):
             send(chat_id, f"✅ Raqamingiz ulandi: <b>{phone}</b>\n\nEndi ilovaga qayting va «Kod olish» tugmasini bosing — kod shu yerga keladi.", REMOVE_KB)
         return
 
+    if text.startswith("/"):
+        cmd = text.split()[0][1:].split("@")[0].lower()
+        if cmd in {c for c, _ in COMMANDS}:
+            send(chat_id, command_reply(cmd, chat_id), REMOVE_KB)
+            return
+
     link = TelegramLink.objects.filter(chat_id=chat_id).first()
     if link:
         send(chat_id, f"Raqamingiz ulangan: <b>{link.phone}</b>\nIlovada «Kod olish»ni bosing — kod shu yerga keladi.")
     else:
         send(chat_id, "Ilovaga kirish uchun raqamingizni ulashing:", CONTACT_KB)
+
+
+def command_reply(cmd, chat_id):
+    from core.levels import level_for
+    from core.progress import current_streak
+    from core.words import word_for
+    from learning.models import DailyChallenge
+
+    from .models import User
+
+    url = public_url()
+    if cmd == "help":
+        return "🤖 <b>EduWay AI boti</b>\n\n" + "\n".join(f"/{c} — {d}" for c, d in COMMANDS) + (f"\n\n🌐 {url}" if url else "")
+    if cmd == "word":
+        w = word_for(timezone.localdate())
+        return f"📖 <b>Kun so'zi:</b> {w['word']} <i>({w['level']})</i>\n🇺🇿 {esc(w['translation'])}\n\n💬 <i>{esc(w['example'])}</i>"
+    u = User.objects.filter(telegram_chat_id=chat_id, is_active=True).first()
+    if not u:
+        return "Bu Telegram akkaunt hali EduWay AI profiliga ulanmagan. Ilovada telefon raqamingiz bilan kiring — ulanish avtomatik bo'ladi."
+    if cmd == "notify":
+        u.telegram_notify = not u.telegram_notify
+        u.save(update_fields=["telegram_notify"])
+        return "🔔 Bildirishnomalar Telegramga yuboriladi." if u.telegram_notify else "🔕 Telegram bildirishnomalari o'chirildi. Qayta yoqish: /notify"
+    if cmd == "stats":
+        lv = level_for(u.xp)
+        nxt = f"\nKeyingi daraja ({lv['next_title']}) uchun: {lv['to_next']} XP" if lv["next_title"] else ""
+        from core.weekly import summary
+
+        c = summary(u)["current"]
+        return (f"📊 <b>{esc(u.first_name or 'Statistika')}</b>\n\n{lv['icon']} {lv['level']}-daraja · {lv['title']}\n⭐ {u.xp} XP{nxt}\n"
+                f"🔥 Seriya: {current_streak(u)} kun (rekord {u.best_streak})\n\n<b>Shu hafta:</b> {c['xp']} XP, {c['quizzes']} test, "
+                f"{c['focus_minutes']} daq. fokus, {c['active_days']}/7 faol kun")
+    if cmd == "challenge":
+        ch = DailyChallenge.objects.filter(user=u, date=timezone.localdate()).first()
+        if ch and ch.completed:
+            return f"✅ Bugungi challenge bajarilgan: {ch.score}/{ch.total}. Ertaga yangi savollar!"
+        return "⚡ Bugungi 5 ta savol sizni kutmoqda — bonus XP oling!" + (f"\n\n👉 {url}/challenge" if url else "")
+    return ""
 
 
 # --- Ishga tushirish ---
@@ -207,6 +257,8 @@ def start():
     prog = " ".join(sys.argv[:3])
     if not configured() or os.getenv("EDUWAY_BOT", "1") != "1" or not ("waitress" in prog or "runserver" in sys.argv):
         return
+    threading.Thread(target=lambda: call("setMyCommands", {"commands": [{"command": c, "description": d} for c, d in COMMANDS]}),
+                     daemon=True, name="tg-commands").start()
     url = public_url()
     if url.startswith("https://"):
         threading.Thread(target=_set_webhook, args=(url,), daemon=True, name="tg-webhook").start()

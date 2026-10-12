@@ -124,7 +124,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           </div>
         </header>
         <main className={cx("mx-auto max-w-5xl px-4 sm:px-6", fullBleed ? "pb-24 pt-3 lg:pb-6" : "pb-28 pt-5 lg:pb-12")}>
-          {children ?? <Outlet />}
+          <div key={loc.pathname} className="animate-page">{children ?? <Outlet />}</div>
         </main>
       </div>
 
@@ -145,8 +145,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
               );
             }
             return (
-              <Link key={t.to} to={t.to} className={cx("flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-semibold transition", active ? "text-brand" : "text-sub")}>
-                <t.icon className={cx("h-6 w-6 transition", active && "scale-110")} strokeWidth={active ? 2.4 : 2} />
+              <Link key={t.to} to={t.to} aria-current={active ? "page" : undefined} className={cx("flex flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition active:scale-95", active ? "text-brand" : "text-sub")}>
+                <span className={cx("grid h-8 w-14 place-items-center rounded-full transition-all duration-300", active ? "bg-brand-soft" : "bg-transparent")}>
+                  <t.icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 2} />
+                </span>
                 {t.label}
               </Link>
             );

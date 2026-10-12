@@ -27,6 +27,7 @@ admin_urls = [
 urlpatterns = [
     path("health/", views.health),
     path("dashboard/", views.dashboard),
+    path("weekly/", views.weekly),
     path("search/", views.search),
     path("push/key/", views.push_key),
     path("push/subscribe/", views.push_subscribe),

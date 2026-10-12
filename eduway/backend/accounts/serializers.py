@@ -36,15 +36,26 @@ class ProfileSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     streak = serializers.SerializerMethodField()
     is_admin = serializers.BooleanField(source="is_staff", read_only=True)
+    level = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "email", "phone", "first_name", "last_name", "full_name", "education_stage", "grade", "region",
             "interests", "favorite_subjects", "future_goals", "target_countries", "english_level", "ielts_score", "birth_year", "daily_minutes",
-            "onboarded", "push_reminders", "plan", "is_premium", "premium_until", "xp", "streak", "best_streak", "is_admin", "date_joined",
+            "onboarded", "push_reminders", "telegram_notify", "level", "has_telegram", "plan", "is_premium", "premium_until", "xp", "streak", "best_streak", "is_admin", "date_joined",
         ]
         read_only_fields = ["id", "email", "phone", "premium_until", "xp", "best_streak", "date_joined"]
+
+    has_telegram = serializers.SerializerMethodField()
+
+    def get_has_telegram(self, u):
+        return bool(u.telegram_chat_id)
+
+    def get_level(self, u):
+        from core.levels import level_for
+
+        return level_for(u.xp)
 
     def get_streak(self, u):
         return current_streak(u)

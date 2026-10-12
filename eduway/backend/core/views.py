@@ -8,7 +8,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import ActivityDay, Notification
+from .levels import level_for
 from .progress import current_streak
+from .weekly import summary as weekly_summary
+from .words import word_for
 
 
 @api_view(["GET"])
@@ -80,6 +83,8 @@ def dashboard(request):
     return Response({
         "user": {"first_name": u.first_name, "full_name": u.full_name, "plan": u.plan, "onboarded": u.onboarded, "future_goals": u.future_goals},
         "streak": current_streak(u),
+        "level": level_for(u.xp),
+        "word": {**word_for(today), "saved": VocabWord.objects.filter(user=u, word__iexact=word_for(today)["word"]).exists()},
         "best_streak": u.best_streak,
         "xp": u.xp,
         "today": {"date": today, "tasks": [{"id": t.id, "title": t.title, "details": t.details, "minutes": t.minutes, "done": t.done, "link": t.link, "goal_title": t.goal.title if t.goal else None} for t in tasks],
@@ -99,6 +104,11 @@ def dashboard(request):
         "challenge_done": DailyChallenge.objects.filter(user=u, date=today, completed=True).exists(),
         "ai": {"configured": service.is_configured(), "used_today": service.used_today(u), "limit": service.daily_limit(u)},
     })
+
+
+@api_view(["GET"])
+def weekly(request):
+    return Response(weekly_summary(request.user))
 
 
 @api_view(["GET"])

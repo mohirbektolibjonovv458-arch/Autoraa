@@ -14,6 +14,7 @@ log = logging.getLogger("eduway")
 
 MORNING_HOUR = 9   # grant muddatlari
 EVENING_HOUR = 19  # seriya va challenge eslatmasi
+WEEKLY_HOUR = 18   # yakshanba — haftalik hisobot
 
 
 def _claim(job, today):
@@ -52,6 +53,23 @@ def evening_reminders():
     return n
 
 
+def weekly_reports():
+    from accounts.models import User
+
+    from .models import Notification
+    from .weekly import summary, text
+
+    n = 0
+    since = timezone.localdate() - timedelta(days=13)
+    for u in User.objects.filter(is_active=True, last_active__gte=since):
+        s = summary(u)
+        if not s["current"]["xp"] and not s["previous"]["xp"]:
+            continue
+        Notification.objects.create(user=u, title="📊 Haftalik hisobotingiz tayyor", body=text(s), link="/progress", kind="report")
+        n += 1
+    return n
+
+
 def morning_reminders():
     from .views import deadline_reminders
 
@@ -67,6 +85,8 @@ def _loop():
             today = now.date()
             if now.hour >= MORNING_HOUR and _claim("morning", today):
                 log.info("Ertalabki eslatmalar: %s", morning_reminders())
+            if now.weekday() == 6 and now.hour >= WEEKLY_HOUR and _claim("weekly", today):
+                log.info("Haftalik hisobotlar: %s", weekly_reports())
             if now.hour >= EVENING_HOUR and _claim("evening", today):
                 log.info("Kechki eslatmalar: %s", evening_reminders())
         except Exception:  # noqa: BLE001

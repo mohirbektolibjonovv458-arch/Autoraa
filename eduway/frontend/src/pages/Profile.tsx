@@ -3,6 +3,7 @@ import { Info, Bell, Bookmark, ChevronRight, Compass, Crown, Flame, GraduationCa
 import { Badge, PageHeader } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { fmtDate } from "../lib/format";
+import { LevelBar, LevelLadder } from "../components/Level";
 
 const STAGE: Record<string, string> = { school: "Maktab", lyceum: "Litsey / kollej", university: "Universitet", graduate: "Bitiruvchi" };
 
@@ -42,6 +43,12 @@ export default function Profile() {
           <div className="rounded-2xl bg-muted p-3"><Flame className="mx-auto h-5 w-5 text-orange-500" /><p className="mt-1 font-extrabold">{user.streak}</p><p className="text-[11px] text-sub">kun seriya</p></div>
           <div className="rounded-2xl bg-muted p-3"><Flame className="mx-auto h-5 w-5 text-sub" /><p className="mt-1 font-extrabold">{user.best_streak}</p><p className="text-[11px] text-sub">eng uzun</p></div>
         </div>
+        {user.level && (
+          <div className="mt-4 space-y-3">
+            <LevelBar lv={user.level} />
+            <LevelLadder xp={user.xp} />
+          </div>
+        )}
         {(user.interests.length > 0 || user.future_goals) && (
           <div className="mt-4 space-y-2 text-sm">
             {user.future_goals && <p><b>Maqsad:</b> {user.future_goals}</p>}

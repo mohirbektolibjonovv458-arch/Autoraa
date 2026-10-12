@@ -3,6 +3,7 @@ import { Award, Timer, Zap, BookOpen, Bot, Check, CheckCircle2, Compass, Crown, 
 import { cx, ErrorState, PageHeader, PageSkeleton, PremiumLock, Progress as Bar2 } from "../components/ui";
 import { useApi } from "../lib/hooks";
 import { fmtDate, SUBJECT_LABEL } from "../lib/format";
+import { WeeklyReport } from "../components/Weekly";
 
 const ICONS: Record<string, any> = { sparkles: Sparkles, compass: Compass, check: Check, trophy: Trophy, flame: Flame, crown: Crown, book: BookOpen, target: Target, bot: Bot, flag: Flag, timer: Timer, zap: Zap };
 
@@ -35,6 +36,8 @@ export default function ProgressPage() {
           </div>
         ))}
       </div>
+
+      <WeeklyReport />
 
       <section className="card mt-4 p-5">
         <h2 className="font-bold">Faollik (XP)</h2>

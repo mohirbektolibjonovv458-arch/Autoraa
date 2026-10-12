@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from .levels import level_for
 from .models import Achievement, ActivityDay, Notification
 
 ACHIEVEMENTS = {
@@ -58,12 +59,17 @@ def record(user, kind, amount=1, xp=None):
     # streak: AI suhbati o'quv faolligi hisoblanmaydi, faqat o'rganish harakatlari
     if kind != "ai":
         user.refresh_from_db(fields=["streak", "best_streak", "last_active", "xp"])
+        old_level = level_for(user.xp)["level"]
         if user.last_active != d:
             user.streak = user.streak + 1 if user.last_active == d - timedelta(days=1) else 1
             user.best_streak = max(user.best_streak, user.streak)
             user.last_active = d
         user.xp += gained
         user.save(update_fields=["streak", "best_streak", "last_active", "xp"])
+        lv = level_for(user.xp)
+        if lv["level"] > old_level:
+            Notification.objects.create(user=user, title=f"{lv['icon']} Yangi daraja: {lv['title']}!",
+                                        body=f"Siz {lv['level']}-darajaga ko'tarildingiz. Shunday davom eting!", link="/progress", kind="achievement")
         for n in (3, 7, 30):
             if user.streak >= n:
                 award(user, f"streak_{n}")
