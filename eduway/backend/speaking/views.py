@@ -137,7 +137,7 @@ def find(request):
     near = LEVELS[max(0, idx - 1): idx + 2]
     now = timezone.now()
     with transaction.atomic():
-        for old in SpeakSession.objects.select_for_update().filter(Q(a=u) | Q(b=u), status__in=["waiting", "matched"]).select_related("a", "b"):
+        for old in SpeakSession.objects.select_for_update(of=("self",)).filter(Q(a=u) | Q(b=u), status__in=["waiting", "matched"]).select_related("a", "b"):
             _close(old, now)
         SpeakSession.objects.filter(status="waiting", a_seen__lt=now - STALE).update(status="cancelled")
         # ikkala tomon ham ilovani yopib qo'ygan suhbatlar — oxirgi ko'rilgan vaqt bo'yicha yopiladi
@@ -147,6 +147,8 @@ def find(request):
                                          a__is_active=True).exclude(a=u).exclude(a_id__in=blocked_ids(u)).exclude(a__speak_profile__suspended=True)
         qs = qs.order_by("created")
         lock = {"skip_locked": True} if connection.features.has_select_for_update_skip_locked else {}
+        if connection.features.has_select_for_update_of:
+            lock["of"] = ("self",)
         cand = qs.select_for_update(**lock).first()
         if cand:
             cand.b, cand.status, cand.matched_at, cand.b_seen = u, "matched", now, now
@@ -182,7 +184,7 @@ def poll(request, pk):
         other_seen = s.b_seen if field == "a_seen" else s.a_seen
         if s.status == "matched" and other_seen and other_seen < now - STALE:
             with transaction.atomic():
-                s = SpeakSession.objects.select_for_update().select_related("a", "b").get(pk=s.pk)
+                s = SpeakSession.objects.select_for_update(of=("self",)).select_related("a", "b").get(pk=s.pk)
                 if s.status == "matched":
                     _close(s, now)
     return Response(_session_data(s, u, after))
@@ -210,7 +212,7 @@ def signal(request, pk):
 def end(request, pk):
     with transaction.atomic():
         s = _mine(request, pk)
-        s = SpeakSession.objects.select_for_update().select_related("a", "b").get(pk=s.pk)
+        s = SpeakSession.objects.select_for_update(of=("self",)).select_related("a", "b").get(pk=s.pk)
         if s.status in ("waiting", "matched"):
             _close(s)
     return Response(_session_data(s, request.user))
@@ -246,7 +248,7 @@ def report(request, pk):
         if not SpeakReport.objects.filter(session=s, reporter=u).exists():
             SpeakReport.objects.create(session=s, reporter=u, reported=other, reason=reason, note=str(request.data.get("note", ""))[:500])
         SpeakBlock.objects.get_or_create(user=u, blocked=other)
-        s = SpeakSession.objects.select_for_update().select_related("a", "b").get(pk=s.pk)
+        s = SpeakSession.objects.select_for_update(of=("self",)).select_related("a", "b").get(pk=s.pk)
         if s.status in ("waiting", "matched"):
             _close(s)
         distinct = SpeakReport.objects.filter(reported=other, created__gte=timezone.now() - timedelta(days=30)).values("reporter").distinct().count()
