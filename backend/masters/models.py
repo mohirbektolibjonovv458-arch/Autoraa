@@ -10,6 +10,17 @@ SPECIALTIES = [
 ]
 
 
+# Avtoservis qulayliklari (servis sahifasida belgi bilan ko'rsatiladi)
+AMENITIES = {
+    "kutish_zali": "Kutish zali", "wifi": "Wi-Fi", "choy": "Choy / qahva", "kafolat": "Ish uchun kafolat",
+    "karta": "Karta orqali to'lov", "parking": "Avtoturargoh", "zapchast": "Ehtiyot qismlar joyida",
+    "uskuna": "Zamonaviy uskunalar", "evakuator": "Evakuator xizmati", "yuvish": "Avtomoyka",
+}
+# Baho berishda tez tanlanadigan teglar
+REVIEW_TAGS = ["Sifatli ish", "Tez bajarildi", "Halol narx", "Muloyim", "Tushuntirib berdi", "Toza ishladi", "Kafolat berdi", "Vaqtida qabul qildi"]
+REVIEW_CRITERIA = {"quality": "Ish sifati", "price_fair": "Narx", "on_time": "Vaqtida", "politeness": "Muomala"}
+
+
 class MasterProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="master")
     title = models.CharField(max_length=100, blank=True, help_text="Masalan: Azizbek Auto Service")
@@ -25,6 +36,10 @@ class MasterProfile(models.Model):
     reviews_count = models.PositiveIntegerField(default=0)
     completed_jobs = models.PositiveIntegerField(default=0)
     is_verified = models.BooleanField(default=False)
+    # «Avtoservis» — ustaxona (bir nechta usta, joy, qulayliklar); «usta» — shaxsiy usta
+    kind = models.CharField(max_length=10, choices=[("usta", "Shaxsiy usta"), ("servis", "Avtoservis")], default="usta", db_index=True)
+    amenities = models.JSONField(default=list, blank=True)
+    staff_count = models.PositiveSmallIntegerField(default=1)
 
     def recalc_rating(self):
         agg = self.reviews.aggregate(a=Avg("rating"), c=Count("id"))
@@ -41,7 +56,10 @@ class Service(models.Model):
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=20, choices=SPECIALTIES, default="motor")
     price = models.PositiveIntegerField()
+    price_from = models.BooleanField(default=False)  # «... so'mdan» — aniq narx ko'rikdan keyin
     duration = models.CharField(max_length=20, default="1 soat")
+    description = models.CharField(max_length=300, blank=True)  # nima kiradi
+    image = models.ImageField(upload_to=UploadTo("services"), validators=[validate_image], blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -63,6 +81,8 @@ class Booking(models.Model):
     note = models.TextField(max_length=500, blank=True)
     status = models.CharField(max_length=12, choices=STATUSES, default="pending")
     reminded = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    review_reminded = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -74,7 +94,15 @@ class Review(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     booking = models.OneToOneField(Booking, on_delete=models.SET_NULL, null=True, blank=True, related_name="review")
     rating = models.PositiveSmallIntegerField(default=5)
+    # mezonlar bo'yicha (ixtiyoriy, 1–5)
+    quality = models.PositiveSmallIntegerField(null=True, blank=True)
+    price_fair = models.PositiveSmallIntegerField(null=True, blank=True)
+    on_time = models.PositiveSmallIntegerField(null=True, blank=True)
+    politeness = models.PositiveSmallIntegerField(null=True, blank=True)
+    tags = models.JSONField(default=list, blank=True)
     text = models.TextField(max_length=1000, blank=True)
+    reply = models.TextField(max_length=600, blank=True)  # ustaning javobi
+    reply_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -95,6 +123,7 @@ class MasterPhoto(models.Model):
     image = models.ImageField(upload_to=UploadTo("portfolio"), validators=[validate_image])  # «keyin» (yoki yagona rasm)
     before = models.ImageField(upload_to=UploadTo("portfolio"), validators=[validate_image], null=True, blank=True)  # «oldin»
     caption = models.CharField(max_length=120, blank=True)
+    kind = models.CharField(max_length=6, choices=[("work", "Ish namunasi"), ("place", "Servis rasmi")], default="work")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

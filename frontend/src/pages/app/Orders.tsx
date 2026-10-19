@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Calendar, Clock, MapPin, MessageCircle, Package, Phone, RotateCcw, Siren, Star, Wrench } from "lucide-react";
 import { api, errMsg } from "../../api";
 import RescheduleModal from "../../components/RescheduleModal";
+import { ReviewModal } from "../../components/Review";
 import { fmtDay } from "../../components/SlotPicker";
 import { Empty, Modal, Spinner, StatusBadge, useToast } from "../../components/ui";
 import { money } from "../../utils";
@@ -26,6 +27,15 @@ export default function Orders() {
     const el = document.getElementById("o-" + focus);
     if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("focus-hit"); setTimeout(() => el.classList.remove("focus-hit"), 2500); }
   }, [items, focus]);
+
+  // «ishni baholang» bildirishnomasidan kelganda — baho oynasi o'zi ochiladi
+  const toRate = new URLSearchParams(window.location.search).get("review");
+  useEffect(() => {
+    if (!items || !toRate) return;
+    const o = items.find((x) => `${x.type}-${x.id}` === toRate);
+    if (o && !o.rated && o.status === "completed") setReview(o);
+    else if (o) { const el = document.getElementById("o-" + toRate); el?.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  }, [items, toRate]);
 
   const cancel = async (o: any) => {
     if (!confirm("Buyurtmani bekor qilasizmi?")) return;
@@ -67,49 +77,8 @@ export default function Orders() {
           </div>
         );
       })}
-      {review && <ReviewModal order={review} onClose={() => { setReview(null); load(); }} />}
+      {review && <ReviewModal order={{ id: review.id, type: review.type, party: review.party, service: review.title }} onClose={() => { setReview(null); load(); }} />}
       {resched && <RescheduleModal booking={{ id: resched.id, date: resched.b_date, time: resched.b_time }} masterId={resched.master_id} onClose={() => setResched(null)} onDone={() => { setResched(null); load(); }} />}
     </div>
-  );
-}
-
-function ReviewModal({ order, onClose }: { order: any; onClose: () => void }) {
-  const toast = useToast();
-  const [rating, setRating] = useState(5);
-  const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const canPhoto = order.type === "booking";
-  const send = async () => {
-    const url = order.type === "booking" ? `/masters/bookings/${order.id}/review/` : order.type === "sos" ? `/sos/${order.id}/review/` : `/parts/orders/${order.id}/review/`;
-    setBusy(true); setErr("");
-    try {
-      if (canPhoto && files.length) {
-        const fd = new FormData(); fd.append("rating", String(rating)); fd.append("text", text); files.forEach((f) => fd.append("photos", f));
-        await api.post(url, fd);
-      } else await api.post(url, { rating, text });
-      toast("Rahmat! Bahoingiz qabul qilindi.", "success"); onClose();
-    } catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
-  };
-  return (
-    <Modal title={`${order.party} — baho`} onClose={onClose}>
-      <div className="col gap-12">
-        <div className="row gap-8" style={{ justifyContent: "center" }}>
-          {[1, 2, 3, 4, 5].map((n) => <button key={n} onClick={() => setRating(n)} style={{ background: "none", border: 0 }} aria-label={`${n} yulduz`}><Star size={34} fill={n <= rating ? "#f5a623" : "none"} color="#f5a623" /></button>)}
-        </div>
-        {order.type !== "part" && <textarea className="textarea" maxLength={1000} placeholder="Fikringizni yozing (ixtiyoriy)" value={text} onChange={(e) => setText(e.target.value)} />}
-        {canPhoto && (
-          <div className="field"><span>Ish natijasining rasmlari (5 tagacha)</span>
-            <div className="photo-pick">
-              {files.map((f, i) => <div key={i} className="pp"><img src={URL.createObjectURL(f)} alt="" /><button onClick={() => setFiles(files.filter((_, k) => k !== i))} aria-label="O'chirish">×</button></div>)}
-              {files.length < 5 && <label className="add" aria-label="Rasm qo'shish">+<input type="file" accept="image/*" multiple hidden onChange={(e) => setFiles([...files, ...Array.from(e.target.files || [])].slice(0, 5))} /></label>}
-            </div>
-          </div>
-        )}
-        {err && <div className="alert error">{err}</div>}
-        <button className="btn btn-block btn-lg" disabled={busy} onClick={send}>{busy ? "Yuborilmoqda…" : "Yuborish"}</button>
-      </div>
-    </Modal>
   );
 }

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import BeforeAfter from "../../components/BeforeAfter";
 import SlotPicker, { fmtDay, isoDate } from "../../components/SlotPicker";
-import { ArrowLeft, Briefcase, CalendarPlus, Check, Clock, Heart, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
+import { ArrowLeft, Briefcase, CalendarPlus, Check, Clock, Heart, MapPin, MessageCircle, Phone, Share2, Store, Users } from "lucide-react";
+import { AmenityList, PlaceGallery, RatingSummary, ReviewReply } from "../../components/Servis";
 import { api, errMsg, media } from "../../api";
 import { useAuth } from "../../auth";
 import { Avatar, CarArt, Modal, Spinner, Stars, useToast, Verified } from "../../components/ui";
@@ -22,7 +23,14 @@ export default function MasterDetail() {
   const [revFilter, setRevFilter] = useState<"all" | "photo">("all");
 
   useEffect(() => { api.get(`/masters/${id}/`, { params: { lat: geo.lat, lng: geo.lng } }).then((r) => setM(r.data)); }, [id, geo.lat]);
+  useEffect(() => {  // bildirishnomadan «#reviews» bilan kelganda — sharhlarga
+    if (m && window.location.hash === "#reviews") setTimeout(() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" }), 300);
+  }, [!!m]);
   if (!m) return <Spinner />;
+  const place = (m.photos || []).filter((ph: any) => ph.kind === "place");
+  const work = (m.photos || []).filter((ph: any) => ph.kind !== "place");
+  const isOwner = user?.id === m.user.id;
+  const setReview = (r: any) => setM({ ...m, reviews: m.reviews.map((x: any) => x.id === r.id ? r : x) });
 
   const fav = async () => { const r = await api.post(`/masters/${m.id}/favorite/`); setM({ ...m, is_favorite: r.data.is_favorite }); toast(r.data.is_favorite ? "Sevimlilarga qo'shildi" : "Sevimlilardan olib tashlandi"); };
   const share = async () => {
@@ -35,9 +43,10 @@ export default function MasterDetail() {
 
   return (
     <div className="col gap-16" style={{ maxWidth: 860 }}>
-      <div className="hero-app" style={{ minHeight: 190, padding: 18 }}>
-        {m.cover && <img src={media(m.cover)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .5 }} />}
-        {!m.cover && <CarArt className="car-art" />}
+      <div className={"hero-app" + (place.length ? " has-gal" : "")} style={{ minHeight: place.length ? 240 : 190, padding: 18 }}>
+        {place.length > 0 && <PlaceGallery photos={place} onOpen={(p) => setZoom({ src: media(p.image), caption: p.caption })} />}
+        {!place.length && m.cover && <img src={media(m.cover)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .5 }} />}
+        {!place.length && !m.cover && <CarArt className="car-art" />}
         <div className="row between" style={{ position: "relative" }}>
           <button className="icon-btn" onClick={() => nav(-1)} aria-label="Orqaga"><ArrowLeft size={18} /></button>
           <div className="row gap-8"><button className="icon-btn" onClick={share} aria-label="Ulashish"><Share2 size={18} /></button><button className="icon-btn" onClick={fav} aria-label="Sevimli"><Heart size={18} fill={m.is_favorite ? "#ee2b2f" : "none"} color={m.is_favorite ? "#ee2b2f" : "currentColor"} /></button></div>
@@ -47,13 +56,14 @@ export default function MasterDetail() {
         <div className="row-top">
           <Avatar name={m.name} src={m.user.avatar} size="xl" />
           <div className="grow">
-            <div className="row gap-8 wrap"><h2 style={{ fontSize: 22 }} translate="no">{m.name}</h2>{m.is_verified && <Verified />}{m.user.is_premium && <span className="badge amber">★ Premium</span>}</div>
+            <div className="row gap-8 wrap"><h2 style={{ fontSize: 22 }} translate="no">{m.name}</h2>{m.is_verified && <Verified />}{m.kind === "servis" && <span className="badge blue"><Store size={12} /> Avtoservis</span>}{m.user.is_premium && <span className="badge amber">★ Premium</span>}</div>
             <div className="row gap-12 mt-4 wrap"><Stars value={m.rating} count={m.reviews_count} />{m.distance_km != null && <span className="small muted row gap-4"><MapPin size={13} />{m.distance_km} km</span>}</div>
             <div className="chips mt-8 wrap" style={{ flexWrap: "wrap" }}>{m.specialties.map((s: string) => <span key={s} className="chip" style={{ padding: "5px 12px" }}>{SPECIALTIES[s] || s}</span>)}</div>
           </div>
         </div>
         <div className="row gap-16 mt-16 small muted wrap">
-          <span className="row gap-4"><Briefcase size={14} />{m.experience_years} yil tajriba</span>
+          {m.experience_years > 0 && <span className="row gap-4"><Briefcase size={14} />{m.experience_years} yil tajriba</span>}
+          {m.kind === "servis" && m.staff_count > 1 && <span className="row gap-4"><Users size={14} />{m.staff_count} ta usta</span>}
           <span className="row gap-4"><Clock size={14} />{m.is_24_7 ? "24/7 ish vaqti" : m.work_hours}
             {m.work_days?.length > 0 && m.work_days.length < 7 && <span className="muted"> · {m.work_days.map((d: number) => ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"][d]).join(", ")}</span>}
             {m.open_now === true && <b className="open-badge on" style={{ margin: "0 0 0 6px" }}>Hozir ochiq</b>}
@@ -62,26 +72,35 @@ export default function MasterDetail() {
           {m.completed_jobs > 0 && <span>{m.completed_jobs} ta bajarilgan ish</span>}
           {m.user.is_online && <span className="row gap-4" style={{ color: "var(--green)" }}><span className="online-dot" />Hozir online</span>}
         </div>
-        {m.bio && <p className="small mt-12">{m.bio}</p>}
+        {m.bio && <p className="small mt-12" style={{ whiteSpace: "pre-line" }}>{m.bio}</p>}
       </div>
+
+      {m.amenities?.length > 0 && (
+        <div className="card">
+          <h3 style={{ fontSize: 17 }}>Qulayliklar</h3>
+          <div className="mt-12"><AmenityList items={m.amenities} /></div>
+        </div>
+      )}
 
       <div className="card">
         <h3 style={{ fontSize: 17 }}>Xizmatlar va narxlar</h3>
         <div className="mt-8">
           {m.services.map((s: any) => (
-            <div className="svc-line" key={s.id}>
+            <div className={"svc-line" + (s.image ? " with-img" : "")} key={s.id}>
+              {s.image && <button type="button" className="svc-img" onClick={() => setZoom({ src: media(s.image), caption: s.name })}><img src={media(s.image)} alt="" loading="lazy" /></button>}
               <b className="small">{s.name}</b>
-              <span className="price">{money(s.price)}</span>
+              <span className="price">{money(s.price)}{s.price_from && <span className="xs muted"> dan</span>}</span>
               <span className="xs muted">{SPECIALTIES[s.category] || ""} · {s.duration}</span>
               {user?.id !== m.user.id ? <button className="link xs" style={{ background: "none", border: 0, padding: 0, justifySelf: "end" }} onClick={() => { setPre(s.id); setBook(true); }}>Bron qilish →</button> : <span />}
+              {s.description && <p className="xs muted svc-desc">{s.description}</p>}
             </div>
           ))}
           {m.services.length === 0 && <p className="small muted">Usta hali xizmat qo'shmagan.</p>}
         </div>
       </div>
 
-      {m.photos?.length > 0 && (() => {
-        const pairs = m.photos.filter((ph: any) => ph.before), singles = m.photos.filter((ph: any) => !ph.before);
+      {work.length > 0 && (() => {
+        const pairs = work.filter((ph: any) => ph.before), singles = work.filter((ph: any) => !ph.before);
         return (
           <div className="card">
             <h3 style={{ fontSize: 17 }}>Ishlardan namunalar</h3>
@@ -106,8 +125,9 @@ export default function MasterDetail() {
         const photos = m.reviews.flatMap((r: any) => (r.photos || []).map((u: string) => ({ u, r })));
         const shown = revFilter === "photo" ? m.reviews.filter((r: any) => r.photos?.length) : m.reviews;
         return (
-          <div className="card">
-            <div className="row between"><h3 style={{ fontSize: 17 }}>Sharhlar <span className="muted" style={{ fontWeight: 600 }}>· {m.reviews_count}</span></h3>
+          <div className="card" id="reviews">
+            <RatingSummary rating={m.rating} s={m.rating_summary} />
+            <div className="row between mt-12"><h3 style={{ fontSize: 17 }}>Sharhlar <span className="muted" style={{ fontWeight: 600 }}>· {m.reviews_count}</span></h3>
               {photos.length > 0 && <div className="chips" style={{ margin: 0 }}>
                 <button className={"chip" + (revFilter === "all" ? " active" : "")} onClick={() => setRevFilter("all")}>Barchasi</button>
                 <button className={"chip" + (revFilter === "photo" ? " active" : "")} onClick={() => setRevFilter("photo")}>Rasm bilan</button>
@@ -125,8 +145,10 @@ export default function MasterDetail() {
                   <div className="grow" style={{ minWidth: 0 }}>
                     <div className="row between"><b className="small" translate="no">{r.user_name}</b><span className="xs muted">{shortDate(r.created_at)}</span></div>
                     <div className="row gap-8"><Stars value={r.rating} />{r.service && <span className="xs muted">{r.service}</span>}</div>
+                    {r.tags?.length > 0 && <div className="rev-tags">{r.tags.map((t: string) => <span key={t} className="tag-pill">{t}</span>)}</div>}
                     {r.text && <p className="small mt-4" translate="no">{r.text}</p>}
                     {r.photos?.length > 0 && <div className="rev-photos">{r.photos.map((u: string, i: number) => <button key={i} onClick={() => setZoom({ src: media(u), caption: r.user_name })}><img src={media(u)} alt="" loading="lazy" /></button>)}</div>}
+                    <ReviewReply r={r} canReply={isOwner} onSaved={setReview} />
                   </div>
                 </div>
               ))}

@@ -15,7 +15,7 @@ from core.models import notify
 from core.params import float_param, int_param, text_param
 from garage.models import ServiceRecord, Vehicle
 
-from .models import ReviewPhoto, SPECIALTIES, Booking, FavoriteMaster, MasterPhoto, MasterProfile, Review, Service
+from .models import AMENITIES, REVIEW_CRITERIA, REVIEW_TAGS, ReviewPhoto, SPECIALTIES, Booking, FavoriteMaster, MasterPhoto, MasterProfile, Review, Service
 from .serializers import MasterPhotoSerializer, BookingSerializer, MasterDetailSerializer, MasterSerializer, ReviewSerializer, ServiceSerializer
 
 TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"]
@@ -65,6 +65,8 @@ class MasterListView(APIView):
             qs = qs.filter(user__is_online=True, user__last_seen__gte=timezone.now() - timedelta(minutes=10))
         if p.get("verified") == "1":
             qs = qs.filter(is_verified=True)
+        if p.get("kind") in ("usta", "servis"):
+            qs = qs.filter(kind=p["kind"])
         items = list(qs)
         if p.get("category"):
             items = [m for m in items if p["category"] in (m.specialties or [])]
@@ -236,15 +238,16 @@ class BookingStatusView(APIView):
             return Response({"detail": "Bu holatga o'tkazib bo'lmaydi."}, status=400)
         old = b.status
         b.status = new
-        b.save(update_fields=["status"])
+        b.completed_at = timezone.now() if new == "completed" else b.completed_at
+        b.save(update_fields=["status", "completed_at"])
         if is_master:
             master_name = b.master.title or b.master.user.full_name
-            titles = {"confirmed": "✅ Bron tasdiqlandi", "in_progress": "🔧 Usta ishni boshladi", "completed": "🏁 Xizmat yakunlandi — baho bering",
+            titles = {"confirmed": "✅ Bron tasdiqlandi", "in_progress": "🔧 Usta ishni boshladi", "completed": "🏁 Xizmat yakunlandi — ishni baholang",
                       "cancelled": "❌ Bron rad etildi" if old == "pending" else "❌ Bron bekor qilindi"}
             reason = str_in(request.data.get("reason"))[:200]
             body = f"{master_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}" + (f". Sabab: {reason}" if new == "cancelled" and reason else "")
             notify(b.user, titles.get(new, "Bron yangilandi"), body, "order",
-                   f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-{new}", event="booking_update", object_id=b.id)
+                   f"/app/orders?review=booking-{b.id}" if new == "completed" else f"/app/orders?focus=booking-{b.id}", telegram=True, dedup=f"bk-{b.id}-{new}", event="booking_update", object_id=b.id)
         else:
             notify(b.master.user, "❌ Mijoz bronni bekor qildi", f"{b.user.full_name}: {b.service_name}, {b.date:%d.%m} soat {b.time}", "order",
                    f"/app/usta/orders?focus={b.id}", telegram=True, dedup=f"bk-{b.id}-cancel", urgent=True,
@@ -269,18 +272,69 @@ class ReviewCreateView(APIView):
             rating = max(1, min(5, int(request.data.get("rating") or 5)))
         except (TypeError, ValueError):
             return Response({"detail": "Baho 1 dan 5 gacha bo'lishi kerak."}, status=400)
+        crit = {}
+        for k in REVIEW_CRITERIA:  # mezonlar ixtiyoriy: berilmasa — bo'sh
+            v = request.data.get(k)
+            if v in (None, "", "0", 0):
+                continue
+            try:
+                crit[k] = max(1, min(5, int(v)))
+            except (TypeError, ValueError):
+                return Response({"detail": "Mezon bahosi 1 dan 5 gacha bo'lishi kerak."}, status=400)
+        raw_tags = request.data.getlist("tags") if hasattr(request.data, "getlist") else request.data.get("tags") or []
+        tags = [t for t in dict.fromkeys(raw_tags if isinstance(raw_tags, list) else []) if t in REVIEW_TAGS][:6]
         files = request.FILES.getlist("photos")[:5]
         from core.uploads import check_image
         for f in files:
             err = check_image(f)
             if err:
                 return Response({"detail": err}, status=400)
-        r = Review.objects.create(master=b.master, user=request.user, booking=b, rating=rating, text=str_in(request.data.get("text"))[:1000])
+        r = Review.objects.create(master=b.master, user=request.user, booking=b, rating=rating, tags=tags,
+                                  text=str_in(request.data.get("text"))[:1000], **crit)
         for f in files:
             ReviewPhoto.objects.create(review=r, image=f)
         b.master.recalc_rating()
-        notify(b.master.user, "Yangi sharh", f"{request.user.full_name} {rating}★ baho qo'ydi", "review")
+        notify(b.master.user, f"⭐ Yangi baho: {rating}★", f"{request.user.full_name}: {b.service_name}" + (f" — «{r.text[:80]}»" if r.text else ""),
+               "review", f"/app/masters/{b.master_id}#reviews", event="review", object_id=r.id)
         return Response(ReviewSerializer(r).data, status=201)
+
+
+class ReviewReplyView(APIView):
+    """Usta sharhga javob yozadi (yoki bo'sh matn bilan javobni o'chiradi)."""
+    permission_classes = [IsUsta]
+
+    def post(self, request, pk):
+        r = get_object_or_404(Review.objects.select_related("master", "user"), pk=pk, master__user=request.user)
+        text = str_in(request.data.get("text"))[:600]
+        had = bool(r.reply)
+        r.reply, r.reply_at = text, (timezone.now() if text else None)
+        r.save(update_fields=["reply", "reply_at"])
+        if text and not had:
+            notify(r.user, "💬 Usta sharhingizga javob berdi", f"{r.master}: {text[:100]}", "review", f"/app/masters/{r.master_id}#reviews")
+        return Response(ReviewSerializer(r).data)
+
+
+class ToReviewView(APIView):
+    """Mijoz: hali baholanmagan, yaqinda bajarilgan bron (ilova ochilganda «ishni baholang» oynasi uchun)."""
+
+    def get(self, request):
+        from datetime import timedelta
+        b = (Booking.objects.filter(user=request.user, status="completed", review__isnull=True,
+                                    completed_at__gte=timezone.now() - timedelta(days=14))
+             .select_related("master__user").order_by("-completed_at").first())
+        if not b:
+            return Response({"booking": None, "tags": REVIEW_TAGS, "criteria": REVIEW_CRITERIA})
+        return Response({"booking": {"id": b.id, "service_name": b.service_name, "date": b.date, "master_id": b.master_id,
+                                     "master_name": b.master.title or b.master.user.full_name,
+                                     "avatar": b.master.user.avatar.url if b.master.user.avatar else None},
+                         "tags": REVIEW_TAGS, "criteria": REVIEW_CRITERIA})
+
+
+class ReviewOptionsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"tags": REVIEW_TAGS, "criteria": REVIEW_CRITERIA, "amenities": AMENITIES})
 
 
 class MyMasterProfileView(APIView):
@@ -318,7 +372,14 @@ class MyServiceDetailView(APIView):
 
     def patch(self, request, pk):
         obj = get_object_or_404(Service, pk=pk, master__user=request.user)
-        s = ServiceSerializer(obj, data=request.data, partial=True)
+        if request.data.get("remove_image") in ("1", "true", True) and obj.image:
+            obj.image.delete(save=False)
+            obj.image = None
+            obj.save(update_fields=["image"])
+        data = {k: v for k, v in request.data.items() if k != "remove_image"}
+        if "image" in data and not request.FILES.get("image"):
+            data.pop("image")
+        s = ServiceSerializer(obj, data=data, partial=True)
         s.is_valid(raise_exception=True)
         s.save()
         return Response(s.data)
@@ -370,9 +431,12 @@ class MyPhotosView(APIView):
             err = check_image(before)
             if err:
                 return Response({"detail": err}, status=400)
-        if m.photos.count() >= 30:
-            return Response({"detail": "Ko'pi bilan 30 ta rasm."}, status=400)
-        ph = MasterPhoto.objects.create(master=m, image=request.FILES["image"], before=before, caption=str_in(request.data.get("caption"))[:120])
+        kind = "place" if request.data.get("kind") == "place" else "work"
+        limit = 15 if kind == "place" else 30
+        if m.photos.filter(kind=kind).count() >= limit:
+            return Response({"detail": f"Ko'pi bilan {limit} ta rasm."}, status=400)
+        ph = MasterPhoto.objects.create(master=m, image=request.FILES["image"], before=before if kind == "work" else None,
+                                        caption=str_in(request.data.get("caption"))[:120], kind=kind)
         return Response(MasterPhotoSerializer(ph, context={"request": request}).data, status=201)
 
 

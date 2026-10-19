@@ -1,7 +1,8 @@
 """Avtomatik eslatmalar (python manage.py start ichida har 30 daqiqada ishlaydi):
 - avtomobil hujjati muddati (30, 7, 3, 1 kun qolganda, tugagan kuni)
 - bron vaqti yaqinlashganda (mijoz va usta)
-- Premium tugashiga 3 kun va 1 kun qolganda (usta)"""
+- Premium tugashiga 3 kun va 1 kun qolganda (usta)
+- ish tugaganidan 2 soat o'tib hali baho qo'yilmagan bo'lsa — bir marta «ishni baholang»"""
 from datetime import datetime, timedelta
 
 from django.utils import timezone
@@ -67,7 +68,22 @@ def premium_reminders():
     return sent
 
 
+def review_reminders():
+    now = timezone.now()
+    sent = 0
+    qs = Booking.objects.filter(status="completed", review__isnull=True, review_reminded=False,
+                                completed_at__lte=now - timedelta(hours=2), completed_at__gte=now - timedelta(days=3)).select_related("user", "master__user")
+    for b in qs:
+        master = b.master.title or b.master.user.full_name
+        notify(b.user, f"⭐ {master} ishini baholang", f"{b.service_name} — fikringiz boshqa haydovchilarga yaxshi usta tanlashga yordam beradi.",
+               "review", f"/app/orders?review=booking-{b.id}", dedup=f"rv-{b.id}")
+        b.review_reminded = True
+        b.save(update_fields=["review_reminded"])
+        sent += 1
+    return sent
+
+
 def run_all():
     from masters.stories import purge_expired_stories
     purge_expired_stories()  # 24 soatlik hikoyalar — fayli bilan o'chiriladi
-    return document_reminders() + booking_reminders() + premium_reminders()
+    return document_reminders() + booking_reminders() + premium_reminders() + review_reminders()

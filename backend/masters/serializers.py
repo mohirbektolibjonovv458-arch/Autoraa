@@ -2,13 +2,13 @@ from rest_framework import serializers
 
 from accounts.serializers import UserShortSerializer
 
-from .models import Booking, MasterPhoto, MasterProfile, Review, Service
+from .models import AMENITIES, REVIEW_CRITERIA, Booking, MasterPhoto, MasterProfile, Review, Service
 
 
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
-        fields = ["id", "name", "category", "price", "duration"]
+        fields = ["id", "name", "category", "price", "price_from", "duration", "description", "image"]
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -18,7 +18,8 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ["id", "rating", "text", "user_name", "created_at", "photos", "service"]
+        fields = ["id", "rating", "quality", "price_fair", "on_time", "politeness", "tags", "text", "reply", "reply_at",
+                  "user_name", "created_at", "photos", "service"]
 
     def get_user_name(self, r):
         # maxfiylik: ochiq sharhda faqat ism va familiyaning bosh harfi
@@ -52,7 +53,7 @@ class MasterSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "name", "title", "specialties", "experience_years", "address", "work_hours", "is_24_7",
             "bio", "cover", "rating", "reviews_count", "completed_jobs", "is_verified", "min_price",
-            "distance_km", "is_favorite", "services", "work_days", "open_now"]
+            "distance_km", "is_favorite", "services", "work_days", "open_now", "kind", "amenities", "staff_count"]
         read_only_fields = ["rating", "reviews_count", "completed_jobs", "is_verified"]
 
     def get_name(self, o):
@@ -72,6 +73,16 @@ class MasterSerializer(serializers.ModelSerializer):
     def get_open_now(self, m):
         return master_open_now(m)
 
+    def validate_amenities(self, v):
+        if not isinstance(v, list):
+            raise serializers.ValidationError("Qulayliklar ro'yxati noto'g'ri.")
+        return [a for a in dict.fromkeys(v) if a in AMENITIES]
+
+    def validate_staff_count(self, v):
+        if not 1 <= v <= 200:
+            raise serializers.ValidationError("Ustalar soni 1 dan 200 gacha.")
+        return v
+
     def validate_work_days(self, v):
         if not isinstance(v, list) or any(not isinstance(d, int) or not 0 <= d <= 6 for d in v):
             raise serializers.ValidationError("Ish kunlari noto'g'ri.")
@@ -81,18 +92,34 @@ class MasterSerializer(serializers.ModelSerializer):
 class MasterPhotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterPhoto
-        fields = ["id", "image", "before", "caption", "created_at"]
+        fields = ["id", "image", "before", "caption", "kind", "created_at"]
 
 
 class MasterDetailSerializer(MasterSerializer):
     reviews = serializers.SerializerMethodField()
     photos = MasterPhotoSerializer(many=True, read_only=True)
 
+    rating_summary = serializers.SerializerMethodField()
+
     class Meta(MasterSerializer.Meta):
-        fields = MasterSerializer.Meta.fields + ["reviews", "photos"]
+        fields = MasterSerializer.Meta.fields + ["reviews", "photos", "rating_summary"]
 
     def get_reviews(self, o):
-        return ReviewSerializer(o.reviews.select_related("user", "booking").prefetch_related("photos")[:20], many=True).data
+        return ReviewSerializer(o.reviews.select_related("user", "booking").prefetch_related("photos")[:30], many=True).data
+
+    def get_rating_summary(self, o):
+        """Yulduzlar taqsimoti, mezonlar o'rtachasi va eng ko'p tanlangan teglar."""
+        from collections import Counter
+        rows = list(o.reviews.values("rating", "tags", *REVIEW_CRITERIA.keys()))
+        dist = Counter(r["rating"] for r in rows)
+        crit = {}
+        for k, label in REVIEW_CRITERIA.items():
+            vals = [r[k] for r in rows if r[k]]
+            if vals:
+                crit[k] = {"label": label, "avg": round(sum(vals) / len(vals), 1), "count": len(vals)}
+        tags = Counter(t for r in rows for t in (r["tags"] or []))
+        return {"total": len(rows), "dist": {str(n): dist.get(n, 0) for n in range(5, 0, -1)}, "criteria": crit,
+                "tags": tags.most_common(6)}
 
 
 class BookingSerializer(serializers.ModelSerializer):
