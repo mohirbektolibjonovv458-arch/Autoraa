@@ -11,6 +11,7 @@ import { homeFor, useAuth, ROLE_LABEL } from "../auth";
 import { Avatar, Logo, useToast } from "./ui";
 import { Spinner } from "./ui";
 import InstallButton from "./InstallButton";
+import { RatePrompt } from "./Review";
 import EnablePush from "./EnablePush";
 import { ThemeToggle } from "./ThemeToggle";
 import { syncPush } from "../push";
@@ -42,7 +43,7 @@ const NAV: Record<string, { side: Item[]; bottom: Item[] }> = {
     side: [
       { to: "/app/usta", label: "Bosh sahifa", icon: LayoutDashboard, end: true },
       { to: "/app/usta/orders", label: "Buyurtmalar", icon: ClipboardList },
-      { to: "/app/usta/services", label: "Xizmatlar va narxlar", icon: Wrench },
+      { to: "/app/usta/services", label: "Mening servisim", icon: Wrench },
       { to: "/app/usta/shop", label: "Zapchast do'koni", icon: Store },
       { to: "/app/usta/premium", label: "Premium", icon: Crown },
       { to: "/app/usta/sos", label: "Tezkor so'rovlar", icon: Siren },
@@ -225,6 +226,7 @@ export default function AppShell() {
   return (
     <div className="shell">
       <LocationSync />
+      <RatePrompt />
       {(user?.role === "usta" || user?.role === "evakuator") && <SosAlarm />}
       <aside className="side">
         <Link to="/" className="logo-link"><div className="logo"><Logo /></div></Link>

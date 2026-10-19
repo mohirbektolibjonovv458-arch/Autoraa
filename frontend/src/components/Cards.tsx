@@ -11,7 +11,7 @@ export function MasterCard({ m }: { m: any }) {
       <div className="row-top">
         <Avatar name={m.name} src={m.cover || m.user.avatar} className="photo sq" />
         <div className="grow">
-          <div className="row gap-8 wrap"><b className="ellipsis" translate="no">{m.name}</b>{m.is_verified && <Verified />}{m.user.is_premium && <span className="badge amber" style={{ padding: "1px 7px" }}>★ Premium</span>}</div>
+          <div className="row gap-8 wrap"><b className="ellipsis" translate="no">{m.name}</b>{m.is_verified && <Verified />}{m.kind === "servis" && <span className="badge blue" style={{ padding: "1px 7px" }}>Avtoservis</span>}{m.user.is_premium && <span className="badge amber" style={{ padding: "1px 7px" }}>★ Premium</span>}</div>
           <div className="row gap-12 mt-4 wrap">
             <Stars value={m.rating} count={m.reviews_count} />
             {m.distance_km != null && <span className="small muted row gap-4"><MapPin size={13} />{m.distance_km} km</span>}
